@@ -1,0 +1,33 @@
+//go:build integration
+
+package database
+
+import (
+	"context"
+	"log"
+	"os"
+	"testing"
+
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/scylladb"
+)
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	container, err := scylladb.Run(ctx, "scylladb/scylla:6.2")
+	if err != nil {
+		log.Fatalf("could not start scylla container: %v", err)
+	}
+
+	if hosts, err = container.NonShardAwareConnectionHost(ctx); err != nil {
+		log.Fatalf("could not get scylla endpoint: %v", err)
+	}
+	username, password, consistency = "", "", "ONE"
+
+	code := m.Run()
+	if err := testcontainers.TerminateContainer(container); err != nil {
+		log.Printf("could not terminate scylla container: %v", err)
+	}
+	os.Exit(code)
+}
+{% include "_includes/database/tests.go.jinja" %}

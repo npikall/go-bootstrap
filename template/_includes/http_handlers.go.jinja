@@ -1,0 +1,10 @@
+
+func (s *Server) HelloWorldHandler(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, map[string]string{"message": "Hello World"})
+}
+{% if has_db %}
+
+func (s *Server) healthHandler(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, s.db.Health())
+}
+{% endif %}

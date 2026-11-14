@@ -1,0 +1,23 @@
+
+func (s *service) Health() map[string]string {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if err := s.db.PingContext(ctx); err != nil {
+		return map[string]string{"status": "down", "error": err.Error()}
+	}
+
+	stats := s.db.Stats()
+	return map[string]string{
+		"status":           "up",
+		"message":          "It's healthy",
+		"open_connections": strconv.Itoa(stats.OpenConnections),
+		"in_use":           strconv.Itoa(stats.InUse),
+		"idle":             strconv.Itoa(stats.Idle),
+	}
+}
+
+func (s *service) Close() error {
+	dbInstance = nil
+	return s.db.Close()
+}

@@ -1,0 +1,22 @@
+# {{ project_name }}
+
+Scaffolded with [go-bootstrap](https://github.com/npikall/go-bootstrap).
+
+## Development
+
+```sh
+{{ runner }} run{% if react %}     # API on :8080 and the frontend dev server{% endif %}
+
+{{ runner }} watch   # live reload with air
+{{ runner }} test
+{% if external_db %}
+{{ runner }} itest   # integration tests, requires Docker
+{% endif %}
+{{ runner }} lint
+{% if compose %}
+{{ runner }} docker-run
+{% endif %}
+```
+
+Run `{% if runner_make %}make help{% elif runner_just %}just --list{% else %}task --list{% endif %}` to see all targets.
+Development tools are installed on first use into `./bin` with pinned versions.

@@ -1,0 +1,39 @@
+package server
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+
+{% if templ %}
+	"github.com/a-h/templ"
+{% endif %}
+	"github.com/julienschmidt/httprouter"
+{% if templ %}
+
+	"{{ module_path }}/web"
+{% endif %}
+)
+
+func (s *Server) RegisterRoutes() http.Handler {
+	r := httprouter.New()
+
+	r.HandlerFunc(http.MethodGet, "/", s.HelloWorldHandler)
+{% if has_db %}
+	r.HandlerFunc(http.MethodGet, "/health", s.healthHandler)
+{% endif %}
+{% if websocket %}
+	r.HandlerFunc(http.MethodGet, "/websocket", s.websocketHandler)
+{% endif %}
+{% if templ %}
+
+	r.Handler(http.MethodGet, "/assets/*filepath", http.FileServer(http.FS(web.Files)))
+	r.Handler(http.MethodGet, "/web", templ.Handler(web.HelloForm()))
+	r.HandlerFunc(http.MethodPost, "/hello", web.HelloWebHandler)
+{% endif %}
+
+	return corsMiddleware(r)
+}
+{% include "_includes/http_handlers.go.jinja" %}
+{% include "_includes/write_json.go.jinja" %}
+{% include "_includes/cors.go.jinja" %}

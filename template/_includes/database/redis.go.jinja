@@ -1,0 +1,49 @@
+package database
+
+import (
+	"context"
+	"net"
+	"os"
+	"strconv"
+	"time"
+
+	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+	"github.com/redis/go-redis/v9"
+)
+
+{% include "_includes/database/service.go.jinja" %}
+
+type service struct {
+	client *redis.Client
+}
+
+var (
+	address  = os.Getenv("DB_ADDRESS")
+	port     = os.Getenv("DB_PORT")
+	password = os.Getenv("DB_PASSWORD")
+	database = os.Getenv("DB_DATABASE")
+)
+
+func New() Service {
+	db, _ := strconv.Atoi(database)
+	client := redis.NewClient(&redis.Options{
+		Addr:     net.JoinHostPort(address, port),
+		Password: password,
+		DB:       db,
+	})
+	return &service{client: client}
+}
+
+func (s *service) Health() map[string]string {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if err := s.client.Ping(ctx).Err(); err != nil {
+		return map[string]string{"status": "down", "error": err.Error()}
+	}
+	return map[string]string{"status": "up", "message": "It's healthy"}
+}
+
+func (s *service) Close() error {
+	return s.client.Close()
+}

@@ -1,0 +1,60 @@
+package server
+
+import (
+{% if fiber %}
+	"github.com/gofiber/fiber/v2"
+{% else %}
+	"net/http"
+	"os"
+	"time"
+{% endif %}
+{% if has_db %}
+
+	"{{ module_path }}/database"
+{% endif %}
+)
+
+{% if fiber %}
+type FiberServer struct {
+	*fiber.App
+{% if has_db %}
+	db database.Service
+{% endif %}
+}
+
+func New() *FiberServer {
+	return &FiberServer{
+		App: fiber.New(fiber.Config{
+			ServerHeader: "{{ project_name }}",
+			AppName:      "{{ project_name }}",
+		}),
+{% if has_db %}
+		db: database.New(),
+{% endif %}
+	}
+}
+{% else %}
+{% if has_db %}
+type Server struct {
+	db database.Service
+}
+{% else %}
+type Server struct{}
+{% endif %}
+
+func NewServer() *http.Server {
+{% if has_db %}
+	s := &Server{db: database.New()}
+{% else %}
+	s := &Server{}
+{% endif %}
+
+	return &http.Server{
+		Addr:         ":" + os.Getenv("PORT"),
+		Handler:      s.RegisterRoutes(),
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+	}
+}
+{% endif %}

@@ -1,0 +1,75 @@
+export GOBIN := justfile_directory() / "bin"
+export AIR_VERSION := "v1.67.4"
+export GOLANGCI_LINT_VERSION := "v2.15.0"
+export TAILWIND_VERSION := "v4.3.5"
+
+[private]
+default:
+    @just --list
+
+# Build and test the application
+all: build test
+
+# Build the application
+build: generate
+    go build -o main ./cmd/api
+
+# Run the application
+run: generate
+    go run ./cmd/api
+
+# Generate templ and tailwind files
+generate: install-templ install-tailwind
+    "$GOBIN/templ" generate
+    "$GOBIN/tailwindcss" -i web/styles/input.css -o web/assets/css/output.css
+
+# Test the application
+test: generate
+    go test ./...
+
+# Run the database integration tests (requires Docker)
+itest:
+    go test -tags integration ./database
+
+# Lint the application
+lint: generate install-golangci-lint
+    "$GOBIN/golangci-lint" run
+
+# Clean the binary
+clean:
+    rm -f main
+
+# Live Reload
+watch: install-air
+    "$GOBIN/air"
+
+# Start the docker compose services
+docker-run:
+    docker compose up --build
+
+# Stop the docker compose services
+docker-down:
+    docker compose down
+
+[private]
+install-air:
+    @test -x "$GOBIN/air" || go install "github.com/air-verse/air@$AIR_VERSION"
+
+[private]
+install-golangci-lint:
+    @test -x "$GOBIN/golangci-lint" || go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+
+[private]
+install-templ:
+    @test -x "$GOBIN/templ" || go install "github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2)"
+
+[private]
+install-tailwind:
+    #!/bin/sh
+    set -eu
+    test -x "$GOBIN/tailwindcss" && exit 0
+    mkdir -p "$GOBIN"
+    os=$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/macos/')
+    arch=$(uname -m | sed -e 's/x86_64/x64/' -e 's/aarch64/arm64/')
+    curl -sSfL -o "$GOBIN/tailwindcss" "https://github.com/tailwindlabs/tailwindcss/releases/download/$TAILWIND_VERSION/tailwindcss-$os-$arch"
+    chmod +x "$GOBIN/tailwindcss"

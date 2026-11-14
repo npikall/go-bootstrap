@@ -1,0 +1,53 @@
+package server
+
+import (
+{% if templ %}
+	"net/http"
+
+	"github.com/a-h/templ"
+{% endif %}
+{% if websocket %}
+	"github.com/gofiber/contrib/websocket"
+{% endif %}
+	"github.com/gofiber/fiber/v2"
+{% if templ %}
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
+{% endif %}
+	"github.com/gofiber/fiber/v2/middleware/cors"
+{% if templ %}
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
+
+	"{{ module_path }}/web"
+{% endif %}
+)
+
+func (s *FiberServer) RegisterFiberRoutes() {
+	s.Use(cors.New())
+
+	s.Get("/", s.HelloWorldHandler)
+{% if has_db %}
+	s.Get("/health", s.healthHandler)
+{% endif %}
+{% if websocket %}
+	s.Get("/websocket", websocket.New(s.websocketHandler))
+{% endif %}
+{% if templ %}
+
+	s.Use("/assets", filesystem.New(filesystem.Config{
+		Root:       http.FS(web.Files),
+		PathPrefix: "assets",
+	}))
+	s.Get("/web", adaptor.HTTPHandler(templ.Handler(web.HelloForm())))
+	s.Post("/hello", web.HelloWebHandler)
+{% endif %}
+}
+
+func (s *FiberServer) HelloWorldHandler(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"message": "Hello World"})
+}
+{% if has_db %}
+
+func (s *FiberServer) healthHandler(c *fiber.Ctx) error {
+	return c.JSON(s.db.Health())
+}
+{% endif %}

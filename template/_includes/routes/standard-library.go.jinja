@@ -1,0 +1,36 @@
+package server
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+{% if templ %}
+
+	"github.com/a-h/templ"
+
+	"{{ module_path }}/web"
+{% endif %}
+)
+
+func (s *Server) RegisterRoutes() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /{$}", s.HelloWorldHandler)
+{% if has_db %}
+	mux.HandleFunc("GET /health", s.healthHandler)
+{% endif %}
+{% if websocket %}
+	mux.HandleFunc("GET /websocket", s.websocketHandler)
+{% endif %}
+{% if templ %}
+
+	mux.Handle("GET /assets/", http.FileServer(http.FS(web.Files)))
+	mux.Handle("GET /web", templ.Handler(web.HelloForm()))
+	mux.HandleFunc("POST /hello", web.HelloWebHandler)
+{% endif %}
+
+	return corsMiddleware(mux)
+}
+{% include "_includes/http_handlers.go.jinja" %}
+{% include "_includes/write_json.go.jinja" %}
+{% include "_includes/cors.go.jinja" %}

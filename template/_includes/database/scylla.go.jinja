@@ -1,0 +1,61 @@
+package database
+
+import (
+	"context"
+	"log"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/gocql/gocql"
+	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+)
+
+{% include "_includes/database/service.go.jinja" %}
+
+type service struct {
+	session *gocql.Session
+}
+
+var (
+	hosts       = os.Getenv("DB_HOSTS")
+	username    = os.Getenv("DB_USERNAME")
+	password    = os.Getenv("DB_PASSWORD")
+	consistency = os.Getenv("DB_CONSISTENCY")
+)
+
+func New() Service {
+	cluster := gocql.NewCluster(strings.Split(hosts, ",")...)
+	cluster.PoolConfig.HostSelectionPolicy = gocql.TokenAwareHostPolicy(gocql.RoundRobinHostPolicy())
+	if username != "" {
+		cluster.Authenticator = gocql.PasswordAuthenticator{Username: username, Password: password}
+	}
+	if consistency != "" {
+		c, err := gocql.ParseConsistencyWrapper(consistency)
+		if err != nil {
+			log.Fatal(err)
+		}
+		cluster.Consistency = c
+	}
+
+	session, err := cluster.CreateSession()
+	if err != nil {
+		log.Fatalf("Failed to connect to ScyllaDB cluster: %v", err)
+	}
+	return &service{session: session}
+}
+
+func (s *service) Health() map[string]string {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.session.Query("SELECT now() FROM system.local").WithContext(ctx).Exec(); err != nil {
+		return map[string]string{"status": "down", "error": err.Error()}
+	}
+	return map[string]string{"status": "up", "message": "It's healthy"}
+}
+
+func (s *service) Close() error {
+	s.session.Close()
+	return nil
+}

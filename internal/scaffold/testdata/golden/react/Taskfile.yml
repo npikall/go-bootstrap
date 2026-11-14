@@ -1,0 +1,95 @@
+version: "3"
+
+env:
+  AIR_VERSION: v1.67.4
+  GOLANGCI_LINT_VERSION: v2.15.0
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  all:
+    desc: Build and test the application
+    cmds:
+      - task: build
+      - task: test
+
+  build:
+    desc: Build the application
+    cmds:
+      - go build -o main ./cmd/api
+
+  run:
+    desc: Run the application
+    deps: [run-api, run-frontend]
+
+  run-api:
+    internal: true
+    cmds:
+      - go run ./cmd/api
+
+  run-frontend:
+    internal: true
+    deps: [install-frontend]
+    cmds:
+      - npm run dev --prefix frontend
+
+  test:
+    desc: Test the application
+    cmds:
+      - go test ./...
+
+  itest:
+    desc: Run the database integration tests (requires Docker)
+    cmds:
+      - go test -tags integration ./database
+
+  lint:
+    desc: Lint the application
+    deps: [install-golangci-lint]
+    cmds:
+      - ./bin/golangci-lint run
+
+  clean:
+    desc: Clean the binary
+    cmds:
+      - rm -f main
+
+  watch:
+    desc: Live Reload
+    deps: [install-air]
+    cmds:
+      - ./bin/air
+
+  docker-run:
+    desc: Start the docker compose services
+    cmds:
+      - docker compose up --build
+
+  docker-down:
+    desc: Stop the docker compose services
+    cmds:
+      - docker compose down
+
+  install-air:
+    internal: true
+    status:
+      - test -x bin/air
+    cmds:
+      - GOBIN="$PWD/bin" go install "github.com/air-verse/air@$AIR_VERSION"
+
+  install-golangci-lint:
+    internal: true
+    status:
+      - test -x bin/golangci-lint
+    cmds:
+      - GOBIN="$PWD/bin" go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+
+  install-frontend:
+    internal: true
+    status:
+      - test -d frontend/node_modules
+    cmds:
+      - npm install --prefix frontend

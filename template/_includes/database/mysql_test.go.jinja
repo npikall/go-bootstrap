@@ -1,0 +1,42 @@
+//go:build integration
+
+package database
+
+import (
+	"context"
+	"log"
+	"net"
+	"os"
+	"testing"
+
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/mysql"
+)
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	container, err := mysql.Run(ctx, "mysql:8.4",
+		mysql.WithDatabase("test"),
+		mysql.WithUsername("test"),
+		mysql.WithPassword("test"),
+	)
+	if err != nil {
+		log.Fatalf("could not start mysql container: %v", err)
+	}
+
+	endpoint, err := container.PortEndpoint(ctx, "3306/tcp", "")
+	if err != nil {
+		log.Fatalf("could not get mysql endpoint: %v", err)
+	}
+	if host, port, err = net.SplitHostPort(endpoint); err != nil {
+		log.Fatalf("could not parse mysql endpoint: %v", err)
+	}
+	database, username, password = "test", "test", "test"
+
+	code := m.Run()
+	if err := testcontainers.TerminateContainer(container); err != nil {
+		log.Printf("could not terminate mysql container: %v", err)
+	}
+	os.Exit(code)
+}
+{% include "_includes/database/tests.go.jinja" %}

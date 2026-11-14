@@ -1,0 +1,46 @@
+package server
+
+import (
+	"net/http"
+
+{% if templ %}
+	"github.com/a-h/templ"
+{% endif %}
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+{% if templ %}
+
+	"{{ module_path }}/web"
+{% endif %}
+)
+
+func (s *Server) RegisterRoutes() http.Handler {
+	r := gin.Default()
+	r.Use(cors.Default())
+
+	r.GET("/", s.HelloWorldHandler)
+{% if has_db %}
+	r.GET("/health", s.healthHandler)
+{% endif %}
+{% if websocket %}
+	r.GET("/websocket", gin.WrapF(s.websocketHandler))
+{% endif %}
+{% if templ %}
+
+	r.GET("/assets/*filepath", gin.WrapH(http.FileServer(http.FS(web.Files))))
+	r.GET("/web", gin.WrapH(templ.Handler(web.HelloForm())))
+	r.POST("/hello", gin.WrapF(web.HelloWebHandler))
+{% endif %}
+
+	return r
+}
+
+func (s *Server) HelloWorldHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Hello World"})
+}
+{% if has_db %}
+
+func (s *Server) healthHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, s.db.Health())
+}
+{% endif %}

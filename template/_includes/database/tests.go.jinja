@@ -1,0 +1,17 @@
+
+func TestHealth(t *testing.T) {
+	stats := New().Health()
+
+	if stats["status"] != "up" {
+		t.Fatalf("status = %q, want %q (error: %s)", stats["status"], "up", stats["error"])
+	}
+	if stats["message"] != "It's healthy" {
+		t.Errorf("message = %q, want %q", stats["message"], "It's healthy")
+	}
+}
+
+func TestClose(t *testing.T) {
+	if err := New().Close(); err != nil {
+		t.Fatalf("Close() = %v, want nil", err)
+	}
+}

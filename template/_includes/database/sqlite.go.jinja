@@ -1,0 +1,38 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"log"
+	"os"
+	"strconv"
+	"time"
+
+	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+	_ "modernc.org/sqlite"                // registers the sqlite driver
+)
+
+{% include "_includes/database/service.go.jinja" %}
+
+type service struct {
+	db *sql.DB
+}
+
+var (
+	dburl      = os.Getenv("DB_URL")
+	dbInstance *service
+)
+
+func New() Service {
+	if dbInstance != nil {
+		return dbInstance
+	}
+
+	db, err := sql.Open("sqlite", dburl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbInstance = &service{db: db}
+	return dbInstance
+}
+{% include "_includes/database/sql_health.go.jinja" %}

@@ -1,0 +1,38 @@
+//go:build integration
+
+package database
+
+import (
+	"context"
+	"log"
+	"net"
+	"os"
+	"testing"
+
+	"github.com/testcontainers/testcontainers-go"
+	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
+)
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+	container, err := tcredis.Run(ctx, "redis:8-alpine")
+	if err != nil {
+		log.Fatalf("could not start redis container: %v", err)
+	}
+
+	endpoint, err := container.PortEndpoint(ctx, "6379/tcp", "")
+	if err != nil {
+		log.Fatalf("could not get redis endpoint: %v", err)
+	}
+	if address, port, err = net.SplitHostPort(endpoint); err != nil {
+		log.Fatalf("could not parse redis endpoint: %v", err)
+	}
+	password, database = "", "0"
+
+	code := m.Run()
+	if err := testcontainers.TerminateContainer(container); err != nil {
+		log.Printf("could not terminate redis container: %v", err)
+	}
+	os.Exit(code)
+}
+{% include "_includes/database/tests.go.jinja" %}

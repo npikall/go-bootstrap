@@ -1,0 +1,54 @@
+package database
+
+import (
+	"context"
+	"database/sql"
+	"log"
+	"net"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/go-sql-driver/mysql"
+	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+)
+
+{% include "_includes/database/service.go.jinja" %}
+
+type service struct {
+	db *sql.DB
+}
+
+var (
+	database   = os.Getenv("DB_DATABASE")
+	password   = os.Getenv("DB_PASSWORD")
+	username   = os.Getenv("DB_USERNAME")
+	port       = os.Getenv("DB_PORT")
+	host       = os.Getenv("DB_HOST")
+	dbInstance *service
+)
+
+func New() Service {
+	if dbInstance != nil {
+		return dbInstance
+	}
+
+	cfg := mysql.NewConfig()
+	cfg.User = username
+	cfg.Passwd = password
+	cfg.Net = "tcp"
+	cfg.Addr = net.JoinHostPort(host, port)
+	cfg.DBName = database
+	cfg.ParseTime = true
+
+	db, err := sql.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.SetConnMaxLifetime(0)
+	db.SetMaxIdleConns(50)
+	db.SetMaxOpenConns(50)
+	dbInstance = &service{db: db}
+	return dbInstance
+}
+{% include "_includes/database/sql_health.go.jinja" %}

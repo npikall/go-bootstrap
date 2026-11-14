@@ -1,0 +1,125 @@
+services:
+{% if docker %}
+  app:
+    build:
+      context: .
+      target: prod
+    restart: unless-stopped
+    ports:
+      - ${PORT}:${PORT}
+    env_file: .env
+{% if external_db %}
+    environment:
+{% if database == "redis" %}
+      DB_ADDRESS: db
+{% elif database == "scylla" %}
+      DB_HOSTS: db:9042
+{% else %}
+      DB_HOST: db
+{% endif %}
+    depends_on:
+      db:
+        condition: service_healthy
+{% elif database == "sqlite" %}
+    environment:
+      DB_URL: /app/db/{{ project_name }}.db
+    volumes:
+      - db:/app/db
+{% endif %}
+{% if react %}
+  frontend:
+    build:
+      context: .
+      target: frontend
+    restart: unless-stopped
+    ports:
+      - 5173:5173
+    depends_on:
+      - app
+{% endif %}
+{% endif %}
+{% if database == "postgres" %}
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+{% elif database == "mysql" %}
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - ${DB_PORT}:3306
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME}", "--password=${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+{% elif database == "mongo" %}
+  db:
+    image: mongo:8
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - ${DB_PORT}:27017
+    volumes:
+      - db:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+{% elif database == "redis" %}
+  db:
+    image: redis:8-alpine
+    restart: unless-stopped
+    ports:
+      - ${DB_PORT}:6379
+    volumes:
+      - db:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+{% elif database == "scylla" %}
+  db:
+    image: scylladb/scylla:6.2
+    restart: unless-stopped
+    command: ["--smp=1", "--memory=1G", "--overprovisioned=1", "--developer-mode=1"]
+    ports:
+      - 9042:9042
+    volumes:
+      - db:/var/lib/scylla
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SHOW VERSION' || exit 1"]
+      interval: 15s
+      timeout: 30s
+      retries: 15
+      start_period: 30s
+{% endif %}
+{% if has_db and (external_db or docker) %}
+
+volumes:
+  db:
+{% endif %}

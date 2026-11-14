@@ -1,0 +1,73 @@
+package main
+
+import (
+	"context"
+{% if not fiber %}
+	"errors"
+{% endif %}
+	"log"
+{% if not fiber %}
+	"net/http"
+{% else %}
+	"os"
+{% endif %}
+	"os/signal"
+	"syscall"
+	"time"
+
+	_ "github.com/joho/godotenv/autoload"
+
+	"{{ module_path }}/server"
+)
+
+{% if fiber %}
+func gracefulShutdown(srv *server.FiberServer, done chan bool) {
+{% else %}
+func gracefulShutdown(srv *http.Server, done chan bool) {
+{% endif %}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	<-ctx.Done()
+
+	log.Println("shutting down gracefully, press Ctrl+C again to force")
+	stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+{% if fiber %}
+	if err := srv.ShutdownWithContext(ctx); err != nil {
+{% else %}
+	if err := srv.Shutdown(ctx); err != nil {
+{% endif %}
+		log.Printf("Server forced to shutdown with error: %v", err)
+	}
+	log.Println("Server exiting")
+	done <- true
+}
+
+func main() {
+{% if fiber %}
+	srv := server.New()
+	srv.RegisterFiberRoutes()
+{% else %}
+	srv := server.NewServer()
+{% endif %}
+
+	done := make(chan bool, 1)
+	go gracefulShutdown(srv, done)
+
+{% if fiber %}
+	if err := srv.Listen(":" + os.Getenv("PORT")); err != nil {
+		log.Fatalln("http server error:", err)
+	}
+{% else %}
+	err := srv.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalln("http server error:", err)
+	}
+{% endif %}
+
+	<-done
+	log.Println("Graceful shutdown complete.")
+}

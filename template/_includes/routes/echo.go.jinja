@@ -1,0 +1,47 @@
+package server
+
+import (
+	"net/http"
+
+{% if templ %}
+	"github.com/a-h/templ"
+{% endif %}
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+{% if templ %}
+
+	"{{ module_path }}/web"
+{% endif %}
+)
+
+func (s *Server) RegisterRoutes() http.Handler {
+	e := echo.New()
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+
+	e.GET("/", s.HelloWorldHandler)
+{% if has_db %}
+	e.GET("/health", s.healthHandler)
+{% endif %}
+{% if websocket %}
+	e.GET("/websocket", echo.WrapHandler(http.HandlerFunc(s.websocketHandler)))
+{% endif %}
+{% if templ %}
+
+	e.GET("/assets/*", echo.WrapHandler(http.FileServer(http.FS(web.Files))))
+	e.GET("/web", echo.WrapHandler(templ.Handler(web.HelloForm())))
+	e.POST("/hello", echo.WrapHandler(http.HandlerFunc(web.HelloWebHandler)))
+{% endif %}
+
+	return e
+}
+
+func (s *Server) HelloWorldHandler(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]string{"message": "Hello World"})
+}
+{% if has_db %}
+
+func (s *Server) healthHandler(c echo.Context) error {
+	return c.JSON(http.StatusOK, s.db.Health())
+}
+{% endif %}

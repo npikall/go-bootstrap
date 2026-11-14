@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions: {}
+
+jobs:
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+{% if templ %}
+      - name: Generate templ files
+        run: go run "github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2)" generate
+{% endif %}
+{% if tailwind_cli %}
+      - name: Build tailwind css
+        run: |
+          curl -sSfL -o tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/{{ tailwind_version }}/tailwindcss-linux-x64
+          chmod +x tailwindcss
+          ./tailwindcss -i web/styles/input.css -o web/assets/css/output.css --minify
+{% endif %}
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+{% raw %}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+{% endraw %}

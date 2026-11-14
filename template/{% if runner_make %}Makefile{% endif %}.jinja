@@ -1,0 +1,107 @@
+.DEFAULT_GOAL := help
+
+export GOBIN := $(CURDIR)/bin
+
+AIR_VERSION := {{ air_version }}
+GOLANGCI_LINT_VERSION := {{ golangci_lint_version }}
+{% if tailwind_cli %}
+TAILWIND_VERSION := {{ tailwind_version }}
+{% endif %}
+
+.PHONY: all
+all: build test ## Build and test the application
+
+.PHONY: build
+build:{% if templ %} generate{% endif %} ## Build the application
+	go build -o main ./cmd/api
+
+.PHONY: run
+run:{% if templ %} generate{% endif %}{% if react %} install-frontend{% endif %} ## Run the application
+{% if react %}
+	trap 'kill 0' EXIT; go run ./cmd/api & npm run dev --prefix frontend
+{% else %}
+	go run ./cmd/api
+{% endif %}
+{% if templ %}
+
+.PHONY: generate
+generate: install-templ{% if tailwind_cli %} install-tailwind{% endif %} ## Generate templ{% if tailwind_cli %} and tailwind{% endif %} files
+	$(GOBIN)/templ generate
+{% if tailwind_cli %}
+	$(GOBIN)/tailwindcss -i web/styles/input.css -o web/assets/css/output.css
+{% endif %}
+{% endif %}
+
+.PHONY: test
+test:{% if templ %} generate{% endif %} ## Test the application
+	go test ./...
+{% if external_db %}
+
+.PHONY: itest
+itest: ## Run the database integration tests (requires Docker)
+	go test -tags integration ./database
+{% endif %}
+
+.PHONY: lint
+lint:{% if templ %} generate{% endif %} install-golangci-lint ## Lint the application
+	$(GOBIN)/golangci-lint run
+
+.PHONY: clean
+clean: ## Clean the binary
+	rm -f main
+{% if database == "sqlite" %}
+	rm -f {{ project_name }}.db
+{% endif %}
+
+.PHONY: watch
+watch: install-air ## Live Reload
+	$(GOBIN)/air
+{% if compose %}
+
+.PHONY: docker-run
+docker-run: ## Start the docker compose services
+	docker compose up --build
+
+.PHONY: docker-down
+docker-down: ## Stop the docker compose services
+	docker compose down
+{% endif %}
+
+.PHONY: help
+help: ## Show this help
+	@echo "Usage: make [target]"
+	@echo
+	@echo "Targets:"
+	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z0-9_-]+:.*## / { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+.PHONY: install-air
+install-air:
+	@test -x $(GOBIN)/air || go install github.com/air-verse/air@$(AIR_VERSION)
+
+.PHONY: install-golangci-lint
+install-golangci-lint:
+	@test -x $(GOBIN)/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+{% if templ %}
+
+.PHONY: install-templ
+install-templ:
+	@test -x $(GOBIN)/templ || go install github.com/a-h/templ/cmd/templ@$$(go list -m github.com/a-h/templ | cut -d' ' -f2)
+{% endif %}
+{% if tailwind_cli %}
+
+.PHONY: install-tailwind
+install-tailwind:
+	@test -x $(GOBIN)/tailwindcss || { \
+		mkdir -p $(GOBIN) && \
+		os=$$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/macos/') && \
+		arch=$$(uname -m | sed -e 's/x86_64/x64/' -e 's/aarch64/arm64/') && \
+		curl -sSfL -o $(GOBIN)/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-$$os-$$arch && \
+		chmod +x $(GOBIN)/tailwindcss; \
+	}
+{% endif %}
+{% if react %}
+
+.PHONY: install-frontend
+install-frontend:
+	@test -d frontend/node_modules || npm install --prefix frontend
+{% endif %}
