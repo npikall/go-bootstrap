@@ -15,6 +15,10 @@ all: lint test build ## Lint, test and build
 build: ## Build the binary
 	go build -o go-bootstrap .
 
+.PHONY: install
+install: ## Install the binary
+	go install -ldflags="-s -w"
+
 .PHONY: test
 test: ## Run the unit tests
 	go test ./...
