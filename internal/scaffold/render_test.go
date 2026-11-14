@@ -201,6 +201,9 @@ func TestGolden(t *testing.T) {
 				t.Fatal(err)
 			}
 			delete(files, "web/assets/js/htmx.min.js")
+			// The golden project's own .gitignore ignores .env, so store it under a name that gets committed.
+			files[".envrc"] = files[".env"]
+			delete(files, ".env")
 			if *update {
 				writeGolden(t, dir, files)
 			}
