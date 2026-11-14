@@ -1,6 +1,6 @@
 module github.com/npikall/go-bootstrap
 
-go 1.26.0
+go 1.27.4
 
 require (
 	github.com/charmbracelet/huh v1.0.0
