@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
 {% if sqlc %}
 
 	"{{ module_path }}/database/store"

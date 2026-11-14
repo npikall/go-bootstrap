@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
-
 	"github.com/acme/demo/server"
 )
 

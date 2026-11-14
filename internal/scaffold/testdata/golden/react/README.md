@@ -13,6 +13,10 @@ task lint
 task docker-run
 ```
 
+The application reads its configuration from environment variables only.
+`task` exports the variables in `.env` to every task;
+when running the binary directly, set them yourself.
+
 `task test` runs the tests with [gotestsum](https://github.com/gotestyourself/gotestsum),
 `task test-watch` reruns them when files change.
 

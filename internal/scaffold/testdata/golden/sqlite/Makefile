@@ -1,5 +1,9 @@
 .DEFAULT_GOAL := help
 
+# The variables in .env are exported to every recipe.
+-include .env
+export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env 2>/dev/null)
+
 # Missing development tools are installed system-wide with `go install`.
 GOBIN_DIR := $(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 # A tool on PATH wins, otherwise it is used from where `go install` puts it.

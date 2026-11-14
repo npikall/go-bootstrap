@@ -90,6 +90,10 @@ func TestRenderMatrix(t *testing.T) {
 			checkFileSet(t, opts, files)
 			for p, content := range files {
 				checkContent(t, p, content)
+				// Loading .env is the developer's explicit choice, not a hidden side-effect import.
+				if bytes.Contains(content, []byte("godotenv")) {
+					t.Errorf("%s: must not depend on godotenv", p)
+				}
 			}
 		})
 	}

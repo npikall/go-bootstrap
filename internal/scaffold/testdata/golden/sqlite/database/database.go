@@ -8,8 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
-	_ "modernc.org/sqlite"                // registers the sqlite driver
+	_ "modernc.org/sqlite" // registers the sqlite driver
 
 	"github.com/acme/demo/database/store"
 )

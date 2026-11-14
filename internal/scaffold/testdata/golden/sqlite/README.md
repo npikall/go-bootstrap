@@ -11,6 +11,10 @@ make test
 make lint
 ```
 
+The application reads its configuration from environment variables only.
+`make` exports the variables in `.env` to every recipe;
+when running the binary directly, set them yourself.
+
 `make test` runs the tests with [gotestsum](https://github.com/gotestyourself/gotestsum),
 `make test-watch` reruns them when files change.
 

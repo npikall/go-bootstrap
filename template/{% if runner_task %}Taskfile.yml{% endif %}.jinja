@@ -14,6 +14,9 @@
 {% set go_test = '"{{.GOTESTSUM}}" --' if gotestsum else "go test" %}
 version: "3"
 
+# The variables in .env are exported to every task.
+dotenv: [".env"]
+
 # Missing development tools are installed system-wide with `go install`.
 vars:
   GOBIN_DIR:

@@ -10,8 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"    // registers the pgx driver
-	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+	_ "github.com/jackc/pgx/v5/stdlib" // registers the pgx driver
 
 	"github.com/acme/demo/database/store"
 )

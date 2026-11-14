@@ -10,6 +10,9 @@ install-{{ name }}:
     go install "{{ pkg }}@{{ version }}"
 {%- endmacro %}
 {% set go_test = "gotestsum --" if gotestsum else "go test" %}
+# The variables in .env are exported to every recipe.
+set dotenv-load
+
 # Missing development tools are installed system-wide with `go install`.
 gobin := `d=$(go env GOBIN); echo "${d:-$(go env GOPATH)/bin}"`
 export PATH := gobin + ":" + env("PATH")

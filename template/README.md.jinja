@@ -17,6 +17,10 @@ Scaffolded with [go-bootstrap](https://github.com/npikall/go-bootstrap).
 {{ runner }} docker-run
 {% endif %}
 ```
+
+The application reads its configuration from environment variables only.
+`{{ runner }}` exports the variables in `.env` to every {% if runner_task %}task{% else %}recipe{% endif %};
+when running the binary directly, set them yourself.
 {% if gotestsum %}
 
 `{{ runner }} test` runs the tests with [gotestsum](https://github.com/gotestyourself/gotestsum),

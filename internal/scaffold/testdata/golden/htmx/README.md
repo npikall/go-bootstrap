@@ -13,6 +13,10 @@ just lint
 just docker-run
 ```
 
+The application reads its configuration from environment variables only.
+`just` exports the variables in `.env` to every recipe;
+when running the binary directly, set them yourself.
+
 `just test` runs the tests with [gotestsum](https://github.com/gotestyourself/gotestsum),
 `just test-watch` reruns them when files change.
 
