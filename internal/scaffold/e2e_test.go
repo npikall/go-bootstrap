@@ -25,6 +25,7 @@ func TestEndToEnd(t *testing.T) {
 	add := func(name, fw, db, runner string, features []string, runTargets bool) {
 		opts := testOptions(func(o *Options) {
 			o.Name, o.Framework, o.Database, o.Runner, o.Features, o.Git = name, fw, db, runner, features, "skip"
+			o.GoVersion = ToolchainGoVersion() // the generated go.mod must accept the toolchain that builds it
 		})
 		cases[name] = e2eCase{opts: opts, runTargets: runTargets}
 	}

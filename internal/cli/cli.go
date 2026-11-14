@@ -8,8 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 
 	"golang.org/x/term"
@@ -66,7 +64,7 @@ func create(args []string, tmpl fs.FS, stdout, stderr io.Writer) error {
 	} else if !set["name"] {
 		return errors.New("flag -name is required when not running in a terminal")
 	}
-	opts.GoVersion = goVersion()
+	opts.GoVersion = scaffold.ToolchainGoVersion()
 	if err := scaffold.Render(tmpl, opts, opts.Name); err != nil {
 		return err
 	}
@@ -128,14 +126,4 @@ func newFlagSet(opts *scaffold.Options, output io.Writer) *flag.FlagSet {
 
 func isInteractive() bool {
 	return term.IsTerminal(int(os.Stdin.Fd()))
-}
-
-func goVersion() string {
-	out, err := exec.Command("go", "env", "GOVERSION").Output()
-	version := strings.TrimSpace(string(out))
-	if err != nil || version == "" {
-		version = runtime.Version()
-	}
-	version, _, _ = strings.Cut(strings.TrimPrefix(version, "go"), " ")
-	return version
 }
