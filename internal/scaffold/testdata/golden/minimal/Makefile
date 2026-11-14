@@ -37,6 +37,10 @@ test: ## Test the application
 lint: install-golangci-lint ## Lint the application
 	$(GOLANGCI_LINT) run
 
+.PHONY: fmt
+fmt: install-golangci-lint ## Format the code with the formatters in .golangci.yml
+	$(GOLANGCI_LINT) fmt
+
 .PHONY: vuln
 vuln: install-govulncheck ## Check for known vulnerabilities
 	$(GOVULNCHECK) ./...

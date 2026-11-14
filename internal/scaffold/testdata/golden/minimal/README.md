@@ -9,6 +9,7 @@ make run
 make watch   # live reload with air
 make test
 make lint
+make fmt     # format with the formatters in .golangci.yml
 make vuln    # check for known vulnerabilities with govulncheck
 ```
 

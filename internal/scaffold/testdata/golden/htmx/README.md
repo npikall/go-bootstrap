@@ -10,6 +10,7 @@ just watch   # live reload with air
 just test
 just itest   # integration tests, requires Docker
 just lint
+just fmt     # format with the formatters in .golangci.yml
 just vuln    # check for known vulnerabilities with govulncheck
 just docker-run
 ```

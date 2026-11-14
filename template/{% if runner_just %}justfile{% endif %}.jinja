@@ -109,6 +109,10 @@ migrate-new name: install-goose
 lint:{% if templ %} generate{% endif %} install-golangci-lint
     golangci-lint run
 
+# Format the code with the formatters in .golangci.yml
+fmt: install-golangci-lint
+    golangci-lint fmt
+
 # Check for known vulnerabilities
 vuln:{% if templ %} generate{% endif %} install-govulncheck
     govulncheck ./...

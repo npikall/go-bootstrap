@@ -35,6 +35,10 @@ golden: ## Update the golden files after changing the template
 lint: install-golangci-lint ## Lint the code
 	$(GOLANGCI_LINT) run
 
+.PHONY: fmt
+fmt: install-golangci-lint ## Format the code
+	$(GOLANGCI_LINT) fmt
+
 .PHONY: clean
 clean: ## Clean the binary
 	rm -f go-bootstrap

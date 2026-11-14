@@ -10,6 +10,7 @@ task watch   # live reload with air
 task test
 task itest   # integration tests, requires Docker
 task lint
+task fmt     # format with the formatters in .golangci.yml
 task vuln    # check for known vulnerabilities with govulncheck
 task docker-run
 ```

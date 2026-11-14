@@ -13,6 +13,7 @@ Scaffolded with [go-bootstrap](https://github.com/npikall/go-bootstrap).
 {{ runner }} itest   # integration tests, requires Docker
 {% endif %}
 {{ runner }} lint
+{{ runner }} fmt     # format with the formatters in .golangci.yml
 {{ runner }} vuln    # check for known vulnerabilities with govulncheck
 {% if compose %}
 {{ runner }} docker-run

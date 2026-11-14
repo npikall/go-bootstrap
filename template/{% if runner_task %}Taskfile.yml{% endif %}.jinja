@@ -191,6 +191,12 @@ tasks:
     cmds:
       - '"{{ '{{.GOLANGCI_LINT}}' }}" run'
 
+  fmt:
+    desc: Format the code with the formatters in .golangci.yml
+    deps: [install-golangci-lint]
+    cmds:
+      - '"{{ '{{.GOLANGCI_LINT}}' }}" fmt'
+
   vuln:
     desc: Check for known vulnerabilities
     deps: [{% if templ %}generate, {% endif %}install-govulncheck]

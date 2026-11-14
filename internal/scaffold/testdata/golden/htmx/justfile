@@ -68,6 +68,10 @@ migrate-new name: install-goose
 lint: generate install-golangci-lint
     golangci-lint run
 
+# Format the code with the formatters in .golangci.yml
+fmt: install-golangci-lint
+    golangci-lint fmt
+
 # Check for known vulnerabilities
 vuln: generate install-govulncheck
     govulncheck ./...
