@@ -44,7 +44,13 @@ func prompt(opts *scaffold.Options, set map[string]bool) error {
 	if len(fields) == 0 {
 		return nil
 	}
-	return huh.NewForm(huh.NewGroup(fields...)).Run()
+	// One group per field, so the form shows a single question at a time
+	// and its title is never cut off.
+	groups := make([]*huh.Group, len(fields))
+	for i, f := range fields {
+		groups[i] = huh.NewGroup(f)
+	}
+	return huh.NewForm(groups...).Run()
 }
 
 func selectField(title string, options []string, value *string) huh.Field {
