@@ -6,6 +6,7 @@ gobin := `d=$(go env GOBIN); echo "${d:-$(go env GOPATH)/bin}"`
 export PATH := gobin + ":" + env("PATH")
 export AIR_VERSION := "v1.67.4"
 export GOLANGCI_LINT_VERSION := "v2.15.0"
+export GOVULNCHECK_VERSION := "v1.9.0"
 export TAILWIND_VERSION := "v4.3.5"
 export SQLC_VERSION := "v1.31.1"
 export GOOSE_VERSION := "v3.30.1"
@@ -67,6 +68,10 @@ migrate-new name: install-goose
 lint: generate install-golangci-lint
     golangci-lint run
 
+# Check for known vulnerabilities
+vuln: generate install-govulncheck
+    govulncheck ./...
+
 # Clean the binary
 clean:
     rm -f main
@@ -98,6 +103,14 @@ install-golangci-lint:
     command -v golangci-lint >/dev/null && exit 0
     echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION system-wide with go install" >&2
     go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+
+[private]
+install-govulncheck:
+    #!/bin/sh
+    set -eu
+    command -v govulncheck >/dev/null && exit 0
+    echo "warning: govulncheck not found, installing golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION system-wide with go install" >&2
+    go install "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
 
 [private]
 install-templ:

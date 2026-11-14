@@ -23,6 +23,7 @@ var (
 var toolVersions = map[string]string{
 	"air_version":           "v1.67.4",
 	"golangci_lint_version": "v2.15.0",
+	"govulncheck_version":   "v1.9.0",
 	"tailwind_version":      "v4.3.5",
 	"sqlc_version":          "v1.31.1",
 	"goose_version":         "v3.30.1",

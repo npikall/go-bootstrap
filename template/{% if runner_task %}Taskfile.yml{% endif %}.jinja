@@ -26,6 +26,8 @@ vars:
     sh: command -v air || echo "{{.GOBIN_DIR}}/air"
   GOLANGCI_LINT:
     sh: command -v golangci-lint || echo "{{.GOBIN_DIR}}/golangci-lint"
+  GOVULNCHECK:
+    sh: command -v govulncheck || echo "{{.GOBIN_DIR}}/govulncheck"
 {% endraw %}{% if templ %}
 {% raw %}  TEMPL:
     sh: command -v templ || echo "{{.GOBIN_DIR}}/templ"
@@ -50,6 +52,7 @@ vars:
 env:
   AIR_VERSION: {{ air_version }}
   GOLANGCI_LINT_VERSION: {{ golangci_lint_version }}
+  GOVULNCHECK_VERSION: {{ govulncheck_version }}
 {% if tailwind_cli %}
   TAILWIND_VERSION: {{ tailwind_version }}
 {% endif %}
@@ -188,6 +191,12 @@ tasks:
     cmds:
       - '"{{ '{{.GOLANGCI_LINT}}' }}" run'
 
+  vuln:
+    desc: Check for known vulnerabilities
+    deps: [{% if templ %}generate, {% endif %}install-govulncheck]
+    cmds:
+      - '"{{ '{{.GOVULNCHECK}}' }}" ./...'
+
   clean:
     desc: Clean the binary
     cmds:
@@ -215,6 +224,7 @@ tasks:
 {% endif %}
 {{ go_install("air", "AIR", "github.com/air-verse/air", "$AIR_VERSION") }}
 {{ go_install("golangci-lint", "GOLANGCI_LINT", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint", "$GOLANGCI_LINT_VERSION") }}
+{{ go_install("govulncheck", "GOVULNCHECK", "golang.org/x/vuln/cmd/govulncheck", "$GOVULNCHECK_VERSION") }}
 {% if templ %}
 {{ go_install("templ", "TEMPL", "github.com/a-h/templ/cmd/templ", "$(go list -m github.com/a-h/templ | cut -d' ' -f2)") }}
 {% endif %}

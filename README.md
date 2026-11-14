@@ -68,6 +68,8 @@ project uses templ) and sets up git.
   on `PATH`, it prints a warning and installs a pinned version system-wide with
   `go install` (into `go env GOBIN`, or `$(go env GOPATH)/bin`).
 - A golangci-lint v2 config is included, and the generated code passes it.
+- The `githubaction` feature adds a `govulncheck` workflow that runs on every
+  push, pull request and weekly, so new advisories surface without code changes.
 - GitHub Actions workflows use pinned action SHAs and least-privilege
   permissions, and pass `zizmor`.
 - Database integration tests use testcontainers behind the `integration` build

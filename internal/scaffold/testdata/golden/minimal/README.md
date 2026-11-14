@@ -9,6 +9,7 @@ make run
 make watch   # live reload with air
 make test
 make lint
+make vuln    # check for known vulnerabilities with govulncheck
 ```
 
 The application reads its configuration from environment variables only.

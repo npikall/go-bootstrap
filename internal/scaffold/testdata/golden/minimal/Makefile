@@ -10,11 +10,13 @@ GOBIN_DIR := $(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 tool = $(or $(shell command -v $(1) 2>/dev/null),$(GOBIN_DIR)/$(1))
 AIR := $(call tool,air)
 GOLANGCI_LINT := $(call tool,golangci-lint)
+GOVULNCHECK := $(call tool,govulncheck)
 TEMPL := $(call tool,templ)
 TAILWINDCSS := $(call tool,tailwindcss)
 
 AIR_VERSION := v1.67.4
 GOLANGCI_LINT_VERSION := v2.15.0
+GOVULNCHECK_VERSION := v1.9.0
 
 .PHONY: all
 all: build test ## Build and test the application
@@ -34,6 +36,10 @@ test: ## Test the application
 .PHONY: lint
 lint: install-golangci-lint ## Lint the application
 	$(GOLANGCI_LINT) run
+
+.PHONY: vuln
+vuln: install-govulncheck ## Check for known vulnerabilities
+	$(GOVULNCHECK) ./...
 
 .PHONY: clean
 clean: ## Clean the binary
@@ -62,4 +68,11 @@ install-golangci-lint:
 	@command -v $(GOLANGCI_LINT) >/dev/null || { \
 		echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) system-wide with go install" >&2 && \
 		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	}
+
+.PHONY: install-govulncheck
+install-govulncheck:
+	@command -v $(GOVULNCHECK) >/dev/null || { \
+		echo "warning: govulncheck not found, installing golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) system-wide with go install" >&2 && \
+		go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); \
 	}

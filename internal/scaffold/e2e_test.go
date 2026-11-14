@@ -22,7 +22,7 @@ func TestEndToEnd(t *testing.T) {
 
 	type e2eCase struct {
 		opts       Options
-		runTargets bool // also run the build and test targets of the task runner
+		runTargets bool // also run the build, test and vuln targets of the task runner
 	}
 	cases := map[string]e2eCase{}
 	add := func(name, fw, db, runner string, features, tools []string, runTargets bool) {
@@ -79,6 +79,7 @@ func TestEndToEnd(t *testing.T) {
 				if opts.Uses("goose") && opts.Database == "sqlite" {
 					checkMigrations(t, dir, opts.Runner)
 				}
+				mustReachVulnVerdict(t, dir, opts.Runner)
 			}
 			if _, err := exec.LookPath("npm"); err == nil && opts.Has("react") && tc.runTargets {
 				mustRun(t, filepath.Join(dir, "frontend"), "npm", "install", "--no-audit", "--no-fund")
@@ -145,6 +146,21 @@ func checkMigrations(t *testing.T, dir, runner string) {
 	out := mustOutput(t, dir, runner, "migrate-status")
 	if !strings.Contains(out, "00001_create_users.sql") || strings.Contains(out, "Pending") {
 		t.Errorf("migrate-status after migrate-up:\n%s", out)
+	}
+}
+
+// mustReachVulnVerdict runs the vuln target and requires govulncheck to finish its scan.
+// Findings don't fail the test: they depend on the advisory database, not on the template.
+func mustReachVulnVerdict(t *testing.T, dir, runner string) {
+	t.Helper()
+	cmd := exec.Command(runner, "vuln")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil && !strings.Contains(string(out), "Your code is affected by") {
+		t.Fatalf("%s vuln: %v\n%s", runner, err, out)
+	}
+	if err != nil {
+		t.Logf("%s vuln reported vulnerabilities in the dependencies:\n%s", runner, out)
 	}
 }
 

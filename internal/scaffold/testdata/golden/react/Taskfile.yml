@@ -12,12 +12,15 @@ vars:
     sh: command -v air || echo "{{.GOBIN_DIR}}/air"
   GOLANGCI_LINT:
     sh: command -v golangci-lint || echo "{{.GOBIN_DIR}}/golangci-lint"
+  GOVULNCHECK:
+    sh: command -v govulncheck || echo "{{.GOBIN_DIR}}/govulncheck"
   GOTESTSUM:
     sh: command -v gotestsum || echo "{{.GOBIN_DIR}}/gotestsum"
 
 env:
   AIR_VERSION: v1.67.4
   GOLANGCI_LINT_VERSION: v2.15.0
+  GOVULNCHECK_VERSION: v1.9.0
   GOTESTSUM_VERSION: v1.13.0
 
 tasks:
@@ -76,6 +79,12 @@ tasks:
     cmds:
       - '"{{.GOLANGCI_LINT}}" run'
 
+  vuln:
+    desc: Check for known vulnerabilities
+    deps: [install-govulncheck]
+    cmds:
+      - '"{{.GOVULNCHECK}}" ./...'
+
   clean:
     desc: Clean the binary
     cmds:
@@ -116,6 +125,16 @@ tasks:
         cmd: >-
           echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION system-wide with go install" >&2
       - go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+
+  install-govulncheck:
+    internal: true
+    status:
+      - test -x "{{.GOVULNCHECK}}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: govulncheck not found, installing golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION system-wide with go install" >&2
+      - go install "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
 
   install-gotestsum:
     internal: true
