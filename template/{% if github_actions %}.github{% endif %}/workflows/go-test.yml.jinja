@@ -7,6 +7,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test and Build
