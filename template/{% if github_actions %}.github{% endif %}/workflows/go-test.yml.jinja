@@ -8,7 +8,9 @@ on:
 permissions: {}
 
 concurrency:
-  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+{% raw %}
+  group: ${{ github.workflow }}-${{ github.ref }}
+{% endraw %}
   cancel-in-progress: true
 
 jobs:

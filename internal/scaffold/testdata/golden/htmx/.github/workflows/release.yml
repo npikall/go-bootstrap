@@ -7,12 +7,16 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   goreleaser:
     name: GoReleaser
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # create the GitHub release and upload artifacts
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
