@@ -19,4 +19,5 @@ Scaffolded with [go-bootstrap](https://github.com/npikall/go-bootstrap).
 ```
 
 Run `{% if runner_make %}make help{% elif runner_just %}just --list{% else %}task --list{% endif %}` to see all targets.
-Development tools are installed on first use into `./bin` with pinned versions.
+Missing development tools are installed system-wide on first use with
+`go install` (pinned versions), after printing a warning.

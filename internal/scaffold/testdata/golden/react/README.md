@@ -14,4 +14,5 @@ task docker-run
 ```
 
 Run `task --list` to see all targets.
-Development tools are installed on first use into `./bin` with pinned versions.
+Missing development tools are installed system-wide on first use with
+`go install` (pinned versions), after printing a warning.

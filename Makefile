@@ -1,6 +1,10 @@
 .DEFAULT_GOAL := help
 
-export GOBIN := $(CURDIR)/bin
+# Missing development tools are installed system-wide with `go install`.
+GOBIN_DIR := $(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
+# A tool on PATH wins, otherwise it is used from where `go install` puts it.
+tool = $(or $(shell command -v $(1) 2>/dev/null),$(GOBIN_DIR)/$(1))
+GOLANGCI_LINT := $(call tool,golangci-lint)
 
 GOLANGCI_LINT_VERSION := v2.15.0
 
@@ -17,7 +21,7 @@ test: ## Run the unit tests
 
 .PHONY: e2e
 e2e: install-golangci-lint ## Generate real projects and build, test and lint them (needs network)
-	PATH="$(GOBIN):$$PATH" GO_BOOTSTRAP_E2E=1 go test ./internal/scaffold -run TestEndToEnd -timeout 30m -v
+	PATH="$(GOBIN_DIR):$$PATH" GO_BOOTSTRAP_E2E=1 go test ./internal/scaffold -run TestEndToEnd -timeout 30m -v
 
 .PHONY: golden
 golden: ## Update the golden files after changing the template
@@ -25,7 +29,7 @@ golden: ## Update the golden files after changing the template
 
 .PHONY: lint
 lint: install-golangci-lint ## Lint the code
-	$(GOBIN)/golangci-lint run
+	$(GOLANGCI_LINT) run
 
 .PHONY: clean
 clean: ## Clean the binary
@@ -40,4 +44,7 @@ help: ## Show this help
 
 .PHONY: install-golangci-lint
 install-golangci-lint:
-	@test -x $(GOBIN)/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@command -v $(GOLANGCI_LINT) >/dev/null || { \
+		echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) system-wide with go install" >&2 && \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	}

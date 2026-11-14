@@ -1,6 +1,5 @@
 # Binaries and build output
 /main
-/bin/
 /tmp/
 *.exe
 *.test

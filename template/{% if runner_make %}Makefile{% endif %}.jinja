@@ -1,6 +1,13 @@
 .DEFAULT_GOAL := help
 
-export GOBIN := $(CURDIR)/bin
+# Missing development tools are installed system-wide with `go install`.
+GOBIN_DIR := $(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
+# A tool on PATH wins, otherwise it is used from where `go install` puts it.
+tool = $(or $(shell command -v $(1) 2>/dev/null),$(GOBIN_DIR)/$(1))
+AIR := $(call tool,air)
+GOLANGCI_LINT := $(call tool,golangci-lint)
+TEMPL := $(call tool,templ)
+TAILWINDCSS := $(call tool,tailwindcss)
 
 AIR_VERSION := {{ air_version }}
 GOLANGCI_LINT_VERSION := {{ golangci_lint_version }}
@@ -26,9 +33,9 @@ run:{% if templ %} generate{% endif %}{% if react %} install-frontend{% endif %}
 
 .PHONY: generate
 generate: install-templ{% if tailwind_cli %} install-tailwind{% endif %} ## Generate templ{% if tailwind_cli %} and tailwind{% endif %} files
-	$(GOBIN)/templ generate
+	$(TEMPL) generate
 {% if tailwind_cli %}
-	$(GOBIN)/tailwindcss -i web/styles/input.css -o web/assets/css/output.css
+	$(TAILWINDCSS) -i web/styles/input.css -o web/assets/css/output.css
 {% endif %}
 {% endif %}
 
@@ -44,7 +51,7 @@ itest: ## Run the database integration tests (requires Docker)
 
 .PHONY: lint
 lint:{% if templ %} generate{% endif %} install-golangci-lint ## Lint the application
-	$(GOBIN)/golangci-lint run
+	$(GOLANGCI_LINT) run
 
 .PHONY: clean
 clean: ## Clean the binary
@@ -55,7 +62,7 @@ clean: ## Clean the binary
 
 .PHONY: watch
 watch: install-air ## Live Reload
-	$(GOBIN)/air
+	$(AIR)
 {% if compose %}
 
 .PHONY: docker-run
@@ -76,27 +83,37 @@ help: ## Show this help
 
 .PHONY: install-air
 install-air:
-	@test -x $(GOBIN)/air || go install github.com/air-verse/air@$(AIR_VERSION)
+	@command -v $(AIR) >/dev/null || { \
+		echo "warning: air not found, installing github.com/air-verse/air@$(AIR_VERSION) system-wide with go install" >&2 && \
+		go install github.com/air-verse/air@$(AIR_VERSION); \
+	}
 
 .PHONY: install-golangci-lint
 install-golangci-lint:
-	@test -x $(GOBIN)/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@command -v $(GOLANGCI_LINT) >/dev/null || { \
+		echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) system-wide with go install" >&2 && \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	}
 {% if templ %}
 
 .PHONY: install-templ
 install-templ:
-	@test -x $(GOBIN)/templ || go install github.com/a-h/templ/cmd/templ@$$(go list -m github.com/a-h/templ | cut -d' ' -f2)
+	@command -v $(TEMPL) >/dev/null || { \
+		echo "warning: templ not found, installing github.com/a-h/templ/cmd/templ@$$(go list -m github.com/a-h/templ | cut -d' ' -f2) system-wide with go install" >&2 && \
+		go install github.com/a-h/templ/cmd/templ@$$(go list -m github.com/a-h/templ | cut -d' ' -f2); \
+	}
 {% endif %}
 {% if tailwind_cli %}
 
 .PHONY: install-tailwind
 install-tailwind:
-	@test -x $(GOBIN)/tailwindcss || { \
-		mkdir -p $(GOBIN) && \
+	@command -v $(TAILWINDCSS) >/dev/null || { \
+		echo "warning: tailwindcss not found, downloading $(TAILWIND_VERSION) system-wide into $(GOBIN_DIR)" >&2 && \
+		mkdir -p $(GOBIN_DIR) && \
 		os=$$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/macos/') && \
 		arch=$$(uname -m | sed -e 's/x86_64/x64/' -e 's/aarch64/arm64/') && \
-		curl -sSfL -o $(GOBIN)/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-$$os-$$arch && \
-		chmod +x $(GOBIN)/tailwindcss; \
+		curl -sSfL -o $(TAILWINDCSS) https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-$$os-$$arch && \
+		chmod +x $(TAILWINDCSS); \
 	}
 {% endif %}
 {% if react %}

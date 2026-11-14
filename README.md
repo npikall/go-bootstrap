@@ -49,8 +49,9 @@ project uses templ) and sets up git.
 - Layout: `cmd/api`, `server`, `database`, `web` (templ) and `frontend` (React).
 - Development tools (air, golangci-lint, templ, tailwindcss) are not in the
   `go.mod` tools directive, so their dependencies don't mix with the project's.
-  Each runner target depends on an `install-<tool>` target that installs a
-  pinned version into `./bin` on first use.
+  Each runner target depends on an `install-<tool>` target. When the tool is
+  not on `PATH`, it prints a warning and installs a pinned version system-wide
+  with `go install` (into `go env GOBIN`, or `$(go env GOPATH)/bin`).
 - A golangci-lint v2 config is included, and the generated code passes it.
 - GitHub Actions workflows use pinned action SHAs and least-privilege
   permissions, and pass `zizmor`.

@@ -1,6 +1,13 @@
 .DEFAULT_GOAL := help
 
-export GOBIN := $(CURDIR)/bin
+# Missing development tools are installed system-wide with `go install`.
+GOBIN_DIR := $(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
+# A tool on PATH wins, otherwise it is used from where `go install` puts it.
+tool = $(or $(shell command -v $(1) 2>/dev/null),$(GOBIN_DIR)/$(1))
+AIR := $(call tool,air)
+GOLANGCI_LINT := $(call tool,golangci-lint)
+TEMPL := $(call tool,templ)
+TAILWINDCSS := $(call tool,tailwindcss)
 
 AIR_VERSION := v1.67.4
 GOLANGCI_LINT_VERSION := v2.15.0
@@ -22,7 +29,7 @@ test: ## Test the application
 
 .PHONY: lint
 lint: install-golangci-lint ## Lint the application
-	$(GOBIN)/golangci-lint run
+	$(GOLANGCI_LINT) run
 
 .PHONY: clean
 clean: ## Clean the binary
@@ -30,7 +37,7 @@ clean: ## Clean the binary
 
 .PHONY: watch
 watch: install-air ## Live Reload
-	$(GOBIN)/air
+	$(AIR)
 
 .PHONY: help
 help: ## Show this help
@@ -41,8 +48,14 @@ help: ## Show this help
 
 .PHONY: install-air
 install-air:
-	@test -x $(GOBIN)/air || go install github.com/air-verse/air@$(AIR_VERSION)
+	@command -v $(AIR) >/dev/null || { \
+		echo "warning: air not found, installing github.com/air-verse/air@$(AIR_VERSION) system-wide with go install" >&2 && \
+		go install github.com/air-verse/air@$(AIR_VERSION); \
+	}
 
 .PHONY: install-golangci-lint
 install-golangci-lint:
-	@test -x $(GOBIN)/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@command -v $(GOLANGCI_LINT) >/dev/null || { \
+		echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) system-wide with go install" >&2 && \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	}
