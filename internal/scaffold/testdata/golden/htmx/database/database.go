@@ -12,6 +12,8 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"    // registers the pgx driver
 	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+
+	"github.com/acme/demo/database/store"
 )
 
 // Service represents a service that interacts with a database.
@@ -21,6 +23,9 @@ type Service interface {
 
 	// Close terminates the database connection.
 	Close() error
+
+	// Queries returns the queries sqlc generates from database/queries.
+	Queries() *store.Queries
 }
 
 type service struct {
@@ -78,4 +83,8 @@ func (s *service) Health() map[string]string {
 func (s *service) Close() error {
 	dbInstance = nil
 	return s.db.Close()
+}
+
+func (s *service) Queries() *store.Queries {
+	return store.New(s.db)
 }

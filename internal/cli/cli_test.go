@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/npikall/go-bootstrap/internal/scaffold"
 )
 
 func TestParseFlags(t *testing.T) {
@@ -19,6 +21,8 @@ func TestParseFlags(t *testing.T) {
 		"--feature", "htmx,tailwind",
 		"--feature", "docker",
 		"--runner", "just",
+		"--tool", "sqlc,goose",
+		"--tool", "gotestsum",
 	}, io.Discard)
 	if err != nil {
 		t.Fatal(err)
@@ -30,18 +34,21 @@ func TestParseFlags(t *testing.T) {
 	if want := []string{"htmx", "tailwind", "docker"}; !slices.Equal(opts.Features, want) {
 		t.Errorf("features = %v, want %v", opts.Features, want)
 	}
-	wantSet := []string{"driver", "feature", "framework", "module", "name", "runner"}
+	if want := []string{"sqlc", "goose", "gotestsum"}; !slices.Equal(opts.Tools, want) {
+		t.Errorf("tools = %v, want %v", opts.Tools, want)
+	}
+	wantSet := []string{"driver", "feature", "framework", "module", "name", "runner", "tool"}
 	if got := slices.Sorted(maps.Keys(set)); !slices.Equal(got, wantSet) {
 		t.Errorf("set flags = %v, want %v", got, wantSet)
 	}
 }
 
 func TestParseFlagsRejectsInvalidChoices(t *testing.T) {
-	_, _, err := parseFlags([]string{"-framework", "rails", "-feature", "react,htmx"}, io.Discard)
+	_, _, err := parseFlags([]string{"-framework", "rails", "-feature", "react,htmx", "-tool", "sqlc"}, io.Discard)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	for _, want := range []string{"invalid framework", "mutually exclusive"} {
+	for _, want := range []string{"invalid framework", "mutually exclusive", "sqlc requires"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not contain %q", err, want)
 		}
@@ -71,5 +78,33 @@ func TestRunUnknownCommand(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), `unknown command "destroy"`) {
 		t.Errorf("stderr = %q", stderr.String())
+	}
+}
+
+func TestPromptFieldsAskOnlyForOptionsNotGivenAsFlags(t *testing.T) {
+	all := []string{"name", "module", "framework", "driver", "feature", "tool", "runner", "git"}
+	tests := map[string]struct {
+		set  []string
+		want []string
+	}{
+		"no flags":      {set: nil, want: all},
+		"all flags":     {set: all, want: nil},
+		"only the rest": {set: []string{"name", "driver", "runner"}, want: []string{"module", "framework", "feature", "tool", "git"}},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			set := make(map[string]bool)
+			for _, f := range tt.set {
+				set[f] = true
+			}
+			opts := scaffold.Defaults()
+			var got []string
+			for _, f := range promptFields(&opts, set) {
+				got = append(got, f.GetKey())
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("asked for %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

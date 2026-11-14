@@ -9,10 +9,13 @@ vars:
     sh: command -v air || echo "{{.GOBIN_DIR}}/air"
   GOLANGCI_LINT:
     sh: command -v golangci-lint || echo "{{.GOBIN_DIR}}/golangci-lint"
+  GOTESTSUM:
+    sh: command -v gotestsum || echo "{{.GOBIN_DIR}}/gotestsum"
 
 env:
   AIR_VERSION: v1.67.4
   GOLANGCI_LINT_VERSION: v2.15.0
+  GOTESTSUM_VERSION: v1.13.0
 
 tasks:
   default:
@@ -48,13 +51,21 @@ tasks:
 
   test:
     desc: Test the application
+    deps: [install-gotestsum]
     cmds:
-      - go test ./...
+      - '"{{.GOTESTSUM}}" -- ./...'
+
+  test-watch:
+    desc: Rerun the tests of changed packages
+    deps: [install-gotestsum]
+    cmds:
+      - '"{{.GOTESTSUM}}" --watch'
 
   itest:
     desc: Run the database integration tests (requires Docker)
+    deps: [install-gotestsum]
     cmds:
-      - go test -tags integration ./database
+      - '"{{.GOTESTSUM}}" -- -tags integration ./database'
 
   lint:
     desc: Lint the application
@@ -102,6 +113,16 @@ tasks:
         cmd: >-
           echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION system-wide with go install" >&2
       - go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+
+  install-gotestsum:
+    internal: true
+    status:
+      - test -x "{{.GOTESTSUM}}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: gotestsum not found, installing gotest.tools/gotestsum@$GOTESTSUM_VERSION system-wide with go install" >&2
+      - go install "gotest.tools/gotestsum@$GOTESTSUM_VERSION"
 
   install-frontend:
     internal: true

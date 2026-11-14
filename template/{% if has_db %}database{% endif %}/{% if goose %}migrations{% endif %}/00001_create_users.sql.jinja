@@ -1,0 +1,5 @@
+-- +goose Up
+{% include "_includes/database/users_table.sql.jinja" %}
+
+-- +goose Down
+DROP TABLE users;

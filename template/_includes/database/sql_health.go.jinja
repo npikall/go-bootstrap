@@ -21,3 +21,9 @@ func (s *service) Close() error {
 	dbInstance = nil
 	return s.db.Close()
 }
+{% if sqlc %}
+
+func (s *service) Queries() *store.Queries {
+	return store.New(s.db)
+}
+{% endif %}

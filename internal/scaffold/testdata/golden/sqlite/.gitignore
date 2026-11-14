@@ -1,0 +1,17 @@
+# Binaries and build output
+/main
+/tmp/
+*.exe
+*.test
+*.out
+
+# Generated files
+*_templ.go
+*.db
+
+# Local configuration
+.env
+go.work
+.vscode
+.idea
+.DS_Store

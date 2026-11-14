@@ -1,3 +1,14 @@
+{#- One install target per development tool, installing it only when missing. #}
+{% macro go_install(name, var, pkg, version) %}
+
+.PHONY: install-{{ name }}
+install-{{ name }}:
+	@command -v $({{ var }}) >/dev/null || { \
+		echo "warning: {{ name }} not found, installing {{ pkg }}@{{ version }} system-wide with go install" >&2 && \
+		go install {{ pkg }}@{{ version }}; \
+	}
+{%- endmacro %}
+{% set go_test = "$(GOTESTSUM) --" if gotestsum else "go test" %}
 .DEFAULT_GOAL := help
 
 # Missing development tools are installed system-wide with `go install`.
@@ -8,11 +19,29 @@ AIR := $(call tool,air)
 GOLANGCI_LINT := $(call tool,golangci-lint)
 TEMPL := $(call tool,templ)
 TAILWINDCSS := $(call tool,tailwindcss)
+{% if sqlc %}
+SQLC := $(call tool,sqlc)
+{% endif %}
+{% if goose %}
+GOOSE := $(call tool,goose)
+{% endif %}
+{% if gotestsum %}
+GOTESTSUM := $(call tool,gotestsum)
+{% endif %}
 
 AIR_VERSION := {{ air_version }}
 GOLANGCI_LINT_VERSION := {{ golangci_lint_version }}
 {% if tailwind_cli %}
 TAILWIND_VERSION := {{ tailwind_version }}
+{% endif %}
+{% if sqlc %}
+SQLC_VERSION := {{ sqlc_version }}
+{% endif %}
+{% if goose %}
+GOOSE_VERSION := {{ goose_version }}
+{% endif %}
+{% if gotestsum %}
+GOTESTSUM_VERSION := {{ gotestsum_version }}
 {% endif %}
 
 .PHONY: all
@@ -40,13 +69,43 @@ generate: install-templ{% if tailwind_cli %} install-tailwind{% endif %} ## Gene
 {% endif %}
 
 .PHONY: test
-test:{% if templ %} generate{% endif %} ## Test the application
-	go test ./...
+test:{% if templ %} generate{% endif %}{% if gotestsum %} install-gotestsum{% endif %} ## Test the application
+	{{ go_test }} ./...
+{% if gotestsum %}
+
+.PHONY: test-watch
+test-watch:{% if templ %} generate{% endif %} install-gotestsum ## Rerun the tests of changed packages
+	$(GOTESTSUM) --watch
+{% endif %}
 {% if external_db %}
 
 .PHONY: itest
-itest: ## Run the database integration tests (requires Docker)
-	go test -tags integration ./database
+itest:{% if gotestsum %} install-gotestsum{% endif %} ## Run the database integration tests (requires Docker)
+	{{ go_test }} -tags integration ./database
+{% endif %}
+{% if sqlc %}
+
+.PHONY: sqlc
+sqlc: install-sqlc ## Generate Go code from the SQL queries
+	$(SQLC) generate
+{% endif %}
+{% if goose %}
+
+.PHONY: migrate-up
+migrate-up: install-goose ## Apply all pending migrations
+	$(GOOSE) up
+
+.PHONY: migrate-down
+migrate-down: install-goose ## Roll back the latest migration
+	$(GOOSE) down
+
+.PHONY: migrate-status
+migrate-status: install-goose ## Show the migration status
+	$(GOOSE) status
+
+.PHONY: migrate-new
+migrate-new: install-goose ## Create a migration, e.g. make migrate-new name=add_email
+	$(GOOSE) -s create $(name) sql
 {% endif %}
 
 .PHONY: lint
@@ -79,29 +138,20 @@ help: ## Show this help
 	@echo "Usage: make [target]"
 	@echo
 	@echo "Targets:"
-	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z0-9_-]+:.*## / { printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
-
-.PHONY: install-air
-install-air:
-	@command -v $(AIR) >/dev/null || { \
-		echo "warning: air not found, installing github.com/air-verse/air@$(AIR_VERSION) system-wide with go install" >&2 && \
-		go install github.com/air-verse/air@$(AIR_VERSION); \
-	}
-
-.PHONY: install-golangci-lint
-install-golangci-lint:
-	@command -v $(GOLANGCI_LINT) >/dev/null || { \
-		echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) system-wide with go install" >&2 && \
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
-	}
+	@awk 'BEGIN { FS = ":.*## " } /^[a-zA-Z0-9_-]+:.*## / { printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+{{ go_install("air", "AIR", "github.com/air-verse/air", "$(AIR_VERSION)") }}
+{{ go_install("golangci-lint", "GOLANGCI_LINT", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint", "$(GOLANGCI_LINT_VERSION)") }}
 {% if templ %}
-
-.PHONY: install-templ
-install-templ:
-	@command -v $(TEMPL) >/dev/null || { \
-		echo "warning: templ not found, installing github.com/a-h/templ/cmd/templ@$$(go list -m github.com/a-h/templ | cut -d' ' -f2) system-wide with go install" >&2 && \
-		go install github.com/a-h/templ/cmd/templ@$$(go list -m github.com/a-h/templ | cut -d' ' -f2); \
-	}
+{{ go_install("templ", "TEMPL", "github.com/a-h/templ/cmd/templ", "$$(go list -m github.com/a-h/templ | cut -d' ' -f2)") }}
+{% endif %}
+{% if sqlc %}
+{{ go_install("sqlc", "SQLC", "github.com/sqlc-dev/sqlc/cmd/sqlc", "$(SQLC_VERSION)") }}
+{% endif %}
+{% if goose %}
+{{ go_install("goose", "GOOSE", "github.com/pressly/goose/v3/cmd/goose", "$(GOOSE_VERSION)") }}
+{% endif %}
+{% if gotestsum %}
+{{ go_install("gotestsum", "GOTESTSUM", "gotest.tools/gotestsum", "$(GOTESTSUM_VERSION)") }}
 {% endif %}
 {% if tailwind_cli %}
 

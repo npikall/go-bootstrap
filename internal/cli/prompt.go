@@ -8,39 +8,7 @@ import (
 
 // prompt asks for every option that was not given as a flag.
 func prompt(opts *scaffold.Options, set map[string]bool) error {
-	var fields []huh.Field
-	if !set["name"] {
-		fields = append(fields, huh.NewInput().
-			Title("Project name").
-			Value(&opts.Name).
-			Validate(scaffold.ValidateName))
-	}
-	if !set["module"] {
-		fields = append(fields, huh.NewInput().
-			Title("Module path").
-			Placeholder("defaults to the project name").
-			Value(&opts.ModulePath).
-			Validate(scaffold.ValidateModulePath))
-	}
-	if !set["framework"] {
-		fields = append(fields, selectField("Framework", scaffold.Frameworks, &opts.Framework))
-	}
-	if !set["driver"] {
-		fields = append(fields, selectField("Database driver", scaffold.Databases, &opts.Database))
-	}
-	if !set["feature"] {
-		fields = append(fields, huh.NewMultiSelect[string]().
-			Title("Advanced features").
-			Options(huh.NewOptions(scaffold.Features...)...).
-			Value(&opts.Features).
-			Validate(scaffold.ValidateFeatures))
-	}
-	if !set["runner"] {
-		fields = append(fields, selectField("Task runner", scaffold.Runners, &opts.Runner))
-	}
-	if !set["git"] {
-		fields = append(fields, selectField("Git", scaffold.GitModes, &opts.Git))
-	}
+	fields := promptFields(opts, set)
 	if len(fields) == 0 {
 		return nil
 	}
@@ -53,8 +21,71 @@ func prompt(opts *scaffold.Options, set map[string]bool) error {
 	return huh.NewForm(groups...).Run()
 }
 
-func selectField(title string, options []string, value *string) huh.Field {
+// promptFields returns one question per option not given as a flag, keyed by the
+// flag name, in the order they are asked.
+func promptFields(opts *scaffold.Options, set map[string]bool) []huh.Field {
+	questions := []struct {
+		flag  string
+		field func(key string) huh.Field
+	}{
+		{"name", func(key string) huh.Field {
+			return huh.NewInput().
+				Key(key).
+				Title("Project name").
+				Value(&opts.Name).
+				Validate(scaffold.ValidateName)
+		}},
+		{"module", func(key string) huh.Field {
+			return huh.NewInput().
+				Key(key).
+				Title("Module path").
+				Placeholder("defaults to the project name").
+				Value(&opts.ModulePath).
+				Validate(scaffold.ValidateModulePath)
+		}},
+		{"framework", func(key string) huh.Field {
+			return selectField(key, "Framework", scaffold.Frameworks, &opts.Framework)
+		}},
+		{"driver", func(key string) huh.Field {
+			return selectField(key, "Database driver", scaffold.Databases, &opts.Database)
+		}},
+		{"feature", func(key string) huh.Field {
+			return huh.NewMultiSelect[string]().
+				Key(key).
+				Title("Advanced features").
+				Options(huh.NewOptions(scaffold.Features...)...).
+				Value(&opts.Features).
+				Validate(scaffold.ValidateFeatures)
+		}},
+		{"tool", func(key string) huh.Field {
+			return huh.NewMultiSelect[string]().
+				Key(key).
+				Title("Development tools").
+				Description("sqlc and goose need a SQL database driver").
+				Options(huh.NewOptions(scaffold.Tools...)...).
+				Value(&opts.Tools).
+				// The driver question comes first, so opts.Database is final here.
+				Validate(func(tools []string) error { return scaffold.ValidateTools(tools, opts.Database) })
+		}},
+		{"runner", func(key string) huh.Field {
+			return selectField(key, "Task runner", scaffold.Runners, &opts.Runner)
+		}},
+		{"git", func(key string) huh.Field {
+			return selectField(key, "Git", scaffold.GitModes, &opts.Git)
+		}},
+	}
+	var fields []huh.Field
+	for _, q := range questions {
+		if !set[q.flag] {
+			fields = append(fields, q.field(q.flag))
+		}
+	}
+	return fields
+}
+
+func selectField(key, title string, options []string, value *string) huh.Field {
 	return huh.NewSelect[string]().
+		Key(key).
 		Title(title).
 		Options(huh.NewOptions(options...)...).
 		Value(value)

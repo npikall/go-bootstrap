@@ -1,3 +1,15 @@
+{#- One install target per development tool, installing it only when missing. #}
+{% macro go_install(name, pkg, version) %}
+
+[private]
+install-{{ name }}:
+    #!/bin/sh
+    set -eu
+    command -v {{ name }} >/dev/null && exit 0
+    echo "warning: {{ name }} not found, installing {{ pkg }}@{{ version }} system-wide with go install" >&2
+    go install "{{ pkg }}@{{ version }}"
+{%- endmacro %}
+{% set go_test = "gotestsum --" if gotestsum else "go test" %}
 # Missing development tools are installed system-wide with `go install`.
 gobin := `d=$(go env GOBIN); echo "${d:-$(go env GOPATH)/bin}"`
 export PATH := gobin + ":" + env("PATH")
@@ -5,6 +17,15 @@ export AIR_VERSION := "{{ air_version }}"
 export GOLANGCI_LINT_VERSION := "{{ golangci_lint_version }}"
 {% if tailwind_cli %}
 export TAILWIND_VERSION := "{{ tailwind_version }}"
+{% endif %}
+{% if sqlc %}
+export SQLC_VERSION := "{{ sqlc_version }}"
+{% endif %}
+{% if goose %}
+export GOOSE_VERSION := "{{ goose_version }}"
+{% endif %}
+{% if gotestsum %}
+export GOTESTSUM_VERSION := "{{ gotestsum_version }}"
 {% endif %}
 
 [private]
@@ -39,14 +60,45 @@ generate: install-templ{% if tailwind_cli %} install-tailwind{% endif %}
 {% endif %}
 
 # Test the application
-test:{% if templ %} generate{% endif %}
+test:{% if templ %} generate{% endif %}{% if gotestsum %} install-gotestsum{% endif %}
 
-    go test ./...
+    {{ go_test }} ./...
+{% if gotestsum %}
+
+# Rerun the tests of changed packages
+test-watch:{% if templ %} generate{% endif %} install-gotestsum
+    gotestsum --watch
+{% endif %}
 {% if external_db %}
 
 # Run the database integration tests (requires Docker)
-itest:
-    go test -tags integration ./database
+itest:{% if gotestsum %} install-gotestsum{% endif %}
+
+    {{ go_test }} -tags integration ./database
+{% endif %}
+{% if sqlc %}
+
+# Generate Go code from the SQL queries
+sqlc: install-sqlc
+    sqlc generate
+{% endif %}
+{% if goose %}
+
+# Apply all pending migrations
+migrate-up: install-goose
+    goose up
+
+# Roll back the latest migration
+migrate-down: install-goose
+    goose down
+
+# Show the migration status
+migrate-status: install-goose
+    goose status
+
+# Create a migration, e.g. just migrate-new add_email
+migrate-new name: install-goose
+    goose -s create {% raw %}{{ name }}{% endraw %} sql
 {% endif %}
 
 # Lint the application
@@ -73,31 +125,19 @@ docker-run:
 docker-down:
     docker compose down
 {% endif %}
-
-[private]
-install-air:
-    #!/bin/sh
-    set -eu
-    command -v air >/dev/null && exit 0
-    echo "warning: air not found, installing github.com/air-verse/air@$AIR_VERSION system-wide with go install" >&2
-    go install "github.com/air-verse/air@$AIR_VERSION"
-
-[private]
-install-golangci-lint:
-    #!/bin/sh
-    set -eu
-    command -v golangci-lint >/dev/null && exit 0
-    echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION system-wide with go install" >&2
-    go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+{{ go_install("air", "github.com/air-verse/air", "$AIR_VERSION") }}
+{{ go_install("golangci-lint", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint", "$GOLANGCI_LINT_VERSION") }}
 {% if templ %}
-
-[private]
-install-templ:
-    #!/bin/sh
-    set -eu
-    command -v templ >/dev/null && exit 0
-    echo "warning: templ not found, installing github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2) system-wide with go install" >&2
-    go install "github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2)"
+{{ go_install("templ", "github.com/a-h/templ/cmd/templ", "$(go list -m github.com/a-h/templ | cut -d' ' -f2)") }}
+{% endif %}
+{% if sqlc %}
+{{ go_install("sqlc", "github.com/sqlc-dev/sqlc/cmd/sqlc", "$SQLC_VERSION") }}
+{% endif %}
+{% if goose %}
+{{ go_install("goose", "github.com/pressly/goose/v3/cmd/goose", "$GOOSE_VERSION") }}
+{% endif %}
+{% if gotestsum %}
+{{ go_install("gotestsum", "gotest.tools/gotestsum", "$GOTESTSUM_VERSION") }}
 {% endif %}
 {% if tailwind_cli %}
 

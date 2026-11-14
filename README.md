@@ -24,6 +24,7 @@ go-bootstrap create \
   --framework chi \
   --driver postgres \
   --feature htmx,tailwind,docker,githubaction \
+  --tool sqlc,goose,gotestsum \
   --runner just \
   --git commit
 ```
@@ -35,11 +36,24 @@ go-bootstrap create \
 | `-framework`, `-f` | `chi`, `gin`, `fiber`, `gorilla/mux`, `httprouter`, `standard-library`, `echo`                     | `standard-library` |
 | `-driver`, `-d`    | `mysql`, `postgres`, `sqlite`, `mongo`, `redis`, `scylla`, `none`                                  | `none`             |
 | `-feature`         | `react`, `htmx`, `githubaction`, `websocket`, `tailwind`, `docker` (repeatable or comma separated) | none               |
+| `-tool`            | `sqlc`, `goose`, `gotestsum` (repeatable or comma separated)                                       | none               |
 | `-runner`          | `make`, `just`, `task`                                                                             | `make`             |
 | `-git`, `-g`       | `commit`, `stage`, `skip`                                                                          | `commit`           |
 
 `react` and `htmx` are mutually exclusive. `tailwind` without `react` adds a
 templ frontend styled with the Tailwind standalone CLI.
+
+`sqlc` and `goose` need a SQL driver (`mysql`, `postgres` or `sqlite`):
+
+- `goose` adds `database/migrations` with a first migration, the `GOOSE_*`
+  settings in `.env` and the `migrate-up`, `migrate-down`, `migrate-status` and
+  `migrate-new` targets.
+- `sqlc` adds `sqlc.yaml`, `database/queries` and the generated
+  `database/store` package, exposed as `database.Service.Queries()`. It reads
+  the schema from the goose migrations, or from `database/schema.sql` without
+  goose. The `sqlc` target regenerates the code.
+- `gotestsum` runs the `test` and `itest` targets and CI through gotestsum and
+  adds a `test-watch` target.
 
 After rendering, go-bootstrap runs `go mod tidy`, `templ generate` (when the
 project uses templ) and sets up git.
@@ -47,8 +61,9 @@ project uses templ) and sets up git.
 ## Generated projects
 
 - Layout: `cmd/api`, `server`, `database`, `web` (templ) and `frontend` (React).
-- Development tools (air, golangci-lint, templ, tailwindcss) are not in the
-  `go.mod` tools directive, so their dependencies don't mix with the project's.
+- Development tools (air, golangci-lint, templ, tailwindcss, sqlc, goose,
+  gotestsum) are not in the `go.mod` tools directive, so their dependencies
+  don't mix with the project's.
   Each runner target depends on an `install-<tool>` target. When the tool is not
   on `PATH`, it prints a warning and installs a pinned version system-wide with
   `go install` (into `go env GOBIN`, or `$(go env GOPATH)/bin`).

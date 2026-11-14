@@ -27,7 +27,7 @@ jobs:
       - name: Build
         run: go build ./...
       - name: Test
-        run: go test ./...
+        run: go run gotest.tools/gotestsum@v1.13.0 --format github-actions -- ./...
 
   lint:
     name: Lint
@@ -58,4 +58,4 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run integration tests
-        run: go test -tags integration ./database
+        run: go run gotest.tools/gotestsum@v1.13.0 --format github-actions -- -tags integration ./database

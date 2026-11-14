@@ -1,3 +1,17 @@
+{#- One install target per development tool, installing it only when missing. #}
+{% macro go_install(name, var, pkg, version) %}
+
+  install-{{ name }}:
+    internal: true
+    status:
+      - test -x "{{ '{{.' ~ var ~ '}}' }}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: {{ name }} not found, installing {{ pkg }}@{{ version }} system-wide with go install" >&2
+      - go install "{{ pkg }}@{{ version }}"
+{%- endmacro %}
+{% set go_test = '"{{.GOTESTSUM}}" --' if gotestsum else "go test" %}
 version: "3"
 
 # Missing development tools are installed system-wide with `go install`.
@@ -17,12 +31,33 @@ vars:
 {% raw %}  TAILWINDCSS:
     sh: command -v tailwindcss || echo "{{.GOBIN_DIR}}/tailwindcss"
 {% endraw %}{% endif %}
+{% if sqlc %}
+{% raw %}  SQLC:
+    sh: command -v sqlc || echo "{{.GOBIN_DIR}}/sqlc"
+{% endraw %}{% endif %}
+{% if goose %}
+{% raw %}  GOOSE:
+    sh: command -v goose || echo "{{.GOBIN_DIR}}/goose"
+{% endraw %}{% endif %}
+{% if gotestsum %}
+{% raw %}  GOTESTSUM:
+    sh: command -v gotestsum || echo "{{.GOBIN_DIR}}/gotestsum"
+{% endraw %}{% endif %}
 
 env:
   AIR_VERSION: {{ air_version }}
   GOLANGCI_LINT_VERSION: {{ golangci_lint_version }}
 {% if tailwind_cli %}
   TAILWIND_VERSION: {{ tailwind_version }}
+{% endif %}
+{% if sqlc %}
+  SQLC_VERSION: {{ sqlc_version }}
+{% endif %}
+{% if goose %}
+  GOOSE_VERSION: {{ goose_version }}
+{% endif %}
+{% if gotestsum %}
+  GOTESTSUM_VERSION: {{ gotestsum_version }}
 {% endif %}
 
 tasks:
@@ -84,17 +119,64 @@ tasks:
 
   test:
     desc: Test the application
-{% if templ %}
-    deps: [generate]
+{% if templ or gotestsum %}
+    deps: [{% if templ %}generate{% endif %}{% if templ and gotestsum %}, {% endif %}{% if gotestsum %}install-gotestsum{% endif %}]
 {% endif %}
     cmds:
-      - go test ./...
+      - '{{ go_test }} ./...'
+{% if gotestsum %}
+
+  test-watch:
+    desc: Rerun the tests of changed packages
+    deps: [{% if templ %}generate, {% endif %}install-gotestsum]
+    cmds:
+      - '"{{ '{{.GOTESTSUM}}' }}" --watch'
+{% endif %}
 {% if external_db %}
 
   itest:
     desc: Run the database integration tests (requires Docker)
+{% if gotestsum %}
+    deps: [install-gotestsum]
+{% endif %}
     cmds:
-      - go test -tags integration ./database
+      - '{{ go_test }} -tags integration ./database'
+{% endif %}
+{% if sqlc %}
+
+  sqlc:
+    desc: Generate Go code from the SQL queries
+    deps: [install-sqlc]
+    cmds:
+      - '"{{ '{{.SQLC}}' }}" generate'
+{% endif %}
+{% if goose %}
+
+  migrate-up:
+    desc: Apply all pending migrations
+    deps: [install-goose]
+    cmds:
+      - '"{{ '{{.GOOSE}}' }}" up'
+
+  migrate-down:
+    desc: Roll back the latest migration
+    deps: [install-goose]
+    cmds:
+      - '"{{ '{{.GOOSE}}' }}" down'
+
+  migrate-status:
+    desc: Show the migration status
+    deps: [install-goose]
+    cmds:
+      - '"{{ '{{.GOOSE}}' }}" status'
+
+  migrate-new:
+    desc: Create a migration, e.g. task migrate-new -- add_email
+    deps: [install-goose]
+    requires:
+      vars: [CLI_ARGS]
+    cmds:
+      - '"{{ '{{.GOOSE}}' }}" -s create {{ '{{.CLI_ARGS}}' }} sql'
 {% endif %}
 
   lint:
@@ -128,37 +210,19 @@ tasks:
     cmds:
       - docker compose down
 {% endif %}
-
-  install-air:
-    internal: true
-    status:
-      - test -x "{{ '{{.AIR}}' }}"
-    cmds:
-      - silent: true
-        cmd: >-
-          echo "warning: air not found, installing github.com/air-verse/air@$AIR_VERSION system-wide with go install" >&2
-      - go install "github.com/air-verse/air@$AIR_VERSION"
-
-  install-golangci-lint:
-    internal: true
-    status:
-      - test -x "{{ '{{.GOLANGCI_LINT}}' }}"
-    cmds:
-      - silent: true
-        cmd: >-
-          echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION system-wide with go install" >&2
-      - go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+{{ go_install("air", "AIR", "github.com/air-verse/air", "$AIR_VERSION") }}
+{{ go_install("golangci-lint", "GOLANGCI_LINT", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint", "$GOLANGCI_LINT_VERSION") }}
 {% if templ %}
-
-  install-templ:
-    internal: true
-    status:
-      - test -x "{{ '{{.TEMPL}}' }}"
-    cmds:
-      - silent: true
-        cmd: >-
-          echo "warning: templ not found, installing github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2) system-wide with go install" >&2
-      - go install "github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2)"
+{{ go_install("templ", "TEMPL", "github.com/a-h/templ/cmd/templ", "$(go list -m github.com/a-h/templ | cut -d' ' -f2)") }}
+{% endif %}
+{% if sqlc %}
+{{ go_install("sqlc", "SQLC", "github.com/sqlc-dev/sqlc/cmd/sqlc", "$SQLC_VERSION") }}
+{% endif %}
+{% if goose %}
+{{ go_install("goose", "GOOSE", "github.com/pressly/goose/v3/cmd/goose", "$GOOSE_VERSION") }}
+{% endif %}
+{% if gotestsum %}
+{{ go_install("gotestsum", "GOTESTSUM", "gotest.tools/gotestsum", "$GOTESTSUM_VERSION") }}
 {% endif %}
 {% if tailwind_cli %}
 

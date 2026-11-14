@@ -33,7 +33,11 @@ jobs:
       - name: Build
         run: go build ./...
       - name: Test
+{% if gotestsum %}
+        run: go run gotest.tools/gotestsum@{{ gotestsum_version }} --format github-actions -- ./...
+{% else %}
         run: go test ./...
+{% endif %}
 
   lint:
     name: Lint
@@ -69,5 +73,9 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run integration tests
+{% if gotestsum %}
+        run: go run gotest.tools/gotestsum@{{ gotestsum_version }} --format github-actions -- -tags integration ./database
+{% else %}
         run: go test -tags integration ./database
+{% endif %}
 {% endif %}

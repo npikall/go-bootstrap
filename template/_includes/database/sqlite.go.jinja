@@ -10,6 +10,10 @@ import (
 
 	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
 	_ "modernc.org/sqlite"                // registers the sqlite driver
+{% if sqlc %}
+
+	"{{ module_path }}/database/store"
+{% endif %}
 )
 
 {% include "_includes/database/service.go.jinja" %}

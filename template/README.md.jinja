@@ -17,6 +17,40 @@ Scaffolded with [go-bootstrap](https://github.com/npikall/go-bootstrap).
 {{ runner }} docker-run
 {% endif %}
 ```
+{% if gotestsum %}
+
+`{{ runner }} test` runs the tests with [gotestsum](https://github.com/gotestyourself/gotestsum),
+`{{ runner }} test-watch` reruns them when files change.
+{% endif %}
+{% if goose or sqlc %}
+
+## Database
+{% endif %}
+{% if goose %}
+
+Migrations in `database/migrations` are managed with [goose](https://github.com/pressly/goose),
+configured through the `GOOSE_*` variables in `.env`:
+
+```sh
+{{ runner }} migrate-up       # apply pending migrations
+{{ runner }} migrate-down     # roll back the latest migration
+{{ runner }} migrate-status
+{% if runner_make %}
+make migrate-new name=add_email
+{% elif runner_just %}
+just migrate-new add_email
+{% else %}
+task migrate-new -- add_email
+{% endif %}
+```
+{% endif %}
+{% if sqlc %}
+
+[sqlc](https://sqlc.dev) generates type-safe Go code in `database/store` from the
+queries in `database/queries` and the schema in `database/{% if sql_schema_file %}schema.sql{% else %}migrations{% endif %}`.
+Run `{{ runner }} sqlc` after changing either, and use the result through
+`database.New().Queries()`.
+{% endif %}
 
 Run `{% if runner_make %}make help{% elif runner_just %}just --list{% else %}task --list{% endif %}` to see all targets.
 Missing development tools are installed system-wide on first use with

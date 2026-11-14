@@ -12,6 +12,10 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"    // registers the pgx driver
 	_ "github.com/joho/godotenv/autoload" // loads .env before the variables below are read
+{% if sqlc %}
+
+	"{{ module_path }}/database/store"
+{% endif %}
 )
 
 {% include "_includes/database/service.go.jinja" %}

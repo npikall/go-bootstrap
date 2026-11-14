@@ -40,7 +40,26 @@ var featureSets = map[string][]string{
 	"react":    {"react", "tailwind", "docker", "githubaction"},
 }
 
-// matrix covers every framework, database, runner and the representative feature sets.
+// toolSets pairs each feature set with tools, so every runner renders every tool
+// and sqlc renders both with goose migrations and with a plain schema file.
+var toolSets = map[string][]string{
+	"htmx":     Tools,
+	"tailwind": {"sqlc"},
+	"react":    {"goose", "gotestsum"},
+}
+
+// applicableTools drops the tools the database does not support.
+func applicableTools(tools []string, database string) []string {
+	var out []string
+	for _, tool := range tools {
+		if ValidateTools([]string{tool}, database) == nil {
+			out = append(out, tool)
+		}
+	}
+	return out
+}
+
+// matrix covers every framework, database, runner and the representative feature and tool sets.
 func matrix() map[string]Options {
 	cases := make(map[string]Options)
 	for _, fw := range Frameworks {
@@ -50,6 +69,7 @@ func matrix() map[string]Options {
 					name := fmt.Sprintf("%s/%s/%s/%s", fw, db, setName, runner)
 					cases[name] = testOptions(func(o *Options) {
 						o.Framework, o.Database, o.Features, o.Runner = fw, db, features, runner
+						o.Tools = applicableTools(toolSets[setName], db)
 					})
 				}
 			}
@@ -103,6 +123,11 @@ func checkFileSet(t *testing.T, opts Options, files map[string][]byte) {
 		".github":              opts.Has("githubaction"),
 		".goreleaser.yml":      opts.Has("githubaction"),
 		"server/websocket.go":  opts.Has("websocket"),
+		"sqlc.yaml":            opts.Uses("sqlc"),
+		"database/queries":     opts.Uses("sqlc"),
+		"database/store":       opts.Uses("sqlc"),
+		"database/schema.sql":  opts.Uses("sqlc") && !opts.Uses("goose"),
+		"database/migrations":  opts.Uses("goose"),
 	}
 	for p, want := range expect {
 		if got := has(p); got != want {
@@ -181,11 +206,15 @@ var goldenCases = map[string]Options{
 	"minimal": testOptions(nil),
 	"htmx": testOptions(func(o *Options) {
 		o.Framework, o.Database, o.Runner = "chi", "postgres", "just"
-		o.Features = featureSets["htmx"]
+		o.Features, o.Tools = featureSets["htmx"], Tools
 	}),
 	"react": testOptions(func(o *Options) {
 		o.Framework, o.Database, o.Runner = "fiber", "mongo", "task"
 		o.Features = append(slices.Clone(featureSets["react"]), "websocket")
+		o.Tools = []string{"gotestsum"}
+	}),
+	"sqlite": testOptions(func(o *Options) {
+		o.Database, o.Tools = "sqlite", Tools
 	}),
 }
 
@@ -306,14 +335,18 @@ func TestValidate(t *testing.T) {
 		mutate  func(*Options)
 		wantErr string
 	}{
-		"valid":             {mutate: nil},
-		"empty name":        {mutate: func(o *Options) { o.Name = "" }, wantErr: "invalid project name"},
-		"bad module":        {mutate: func(o *Options) { o.ModulePath = "Not A Module" }, wantErr: "invalid module path"},
-		"unknown framework": {mutate: func(o *Options) { o.Framework = "rails" }, wantErr: "invalid framework"},
-		"unknown driver":    {mutate: func(o *Options) { o.Database = "oracle" }, wantErr: "invalid database driver"},
-		"unknown feature":   {mutate: func(o *Options) { o.Features = []string{"grpc"} }, wantErr: "invalid feature"},
-		"unknown runner":    {mutate: func(o *Options) { o.Runner = "bazel" }, wantErr: "invalid runner"},
-		"react and htmx":    {mutate: func(o *Options) { o.Features = []string{"react", "htmx"} }, wantErr: "mutually exclusive"},
+		"valid":              {mutate: nil},
+		"empty name":         {mutate: func(o *Options) { o.Name = "" }, wantErr: "invalid project name"},
+		"bad module":         {mutate: func(o *Options) { o.ModulePath = "Not A Module" }, wantErr: "invalid module path"},
+		"unknown framework":  {mutate: func(o *Options) { o.Framework = "rails" }, wantErr: "invalid framework"},
+		"unknown driver":     {mutate: func(o *Options) { o.Database = "oracle" }, wantErr: "invalid database driver"},
+		"unknown feature":    {mutate: func(o *Options) { o.Features = []string{"grpc"} }, wantErr: "invalid feature"},
+		"unknown runner":     {mutate: func(o *Options) { o.Runner = "bazel" }, wantErr: "invalid runner"},
+		"react and htmx":     {mutate: func(o *Options) { o.Features = []string{"react", "htmx"} }, wantErr: "mutually exclusive"},
+		"all tools with sql": {mutate: func(o *Options) { o.Database, o.Tools = "postgres", Tools }},
+		"unknown tool":       {mutate: func(o *Options) { o.Tools = []string{"bazel"} }, wantErr: "invalid tool"},
+		"sqlc without sql":   {mutate: func(o *Options) { o.Database, o.Tools = "mongo", []string{"sqlc"} }, wantErr: "sqlc requires"},
+		"goose without db":   {mutate: func(o *Options) { o.Tools = []string{"goose"} }, wantErr: "goose requires"},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {

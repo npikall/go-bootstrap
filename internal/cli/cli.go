@@ -113,14 +113,18 @@ func newFlagSet(opts *scaffold.Options, output io.Writer) *flag.FlagSet {
 	stringFlag(&opts.Database, "driver", "d", "database driver: "+strings.Join(scaffold.Databases, ", "))
 	stringFlag(&opts.Runner, "runner", "", "task runner: "+strings.Join(scaffold.Runners, ", "))
 	stringFlag(&opts.Git, "git", "g", "git setup: "+strings.Join(scaffold.GitModes, ", "))
-	fset.Func("feature", "advanced feature, repeatable or comma separated: "+strings.Join(scaffold.Features, ", "), func(v string) error {
-		for f := range strings.SplitSeq(v, ",") {
-			if f = strings.TrimSpace(f); f != "" {
-				opts.Features = append(opts.Features, f)
+	listFlag := func(p *[]string, name, help string, allowed []string) {
+		fset.Func(name, help+", repeatable or comma separated: "+strings.Join(allowed, ", "), func(v string) error {
+			for item := range strings.SplitSeq(v, ",") {
+				if item = strings.TrimSpace(item); item != "" {
+					*p = append(*p, item)
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		})
+	}
+	listFlag(&opts.Features, "feature", "advanced feature", scaffold.Features)
+	listFlag(&opts.Tools, "tool", "development tool", scaffold.Tools)
 	return fset
 }
 

@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: {{ sqlc_engine }}
+    schema: database/{% if sql_schema_file %}schema.sql{% else %}migrations{% endif %}
+
+    queries: database/queries
+    gen:
+      go:
+        package: store
+        out: database/store

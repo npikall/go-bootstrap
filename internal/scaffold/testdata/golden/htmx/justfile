@@ -4,6 +4,9 @@ export PATH := gobin + ":" + env("PATH")
 export AIR_VERSION := "v1.67.4"
 export GOLANGCI_LINT_VERSION := "v2.15.0"
 export TAILWIND_VERSION := "v4.3.5"
+export SQLC_VERSION := "v1.31.1"
+export GOOSE_VERSION := "v3.30.1"
+export GOTESTSUM_VERSION := "v1.13.0"
 
 [private]
 default:
@@ -26,12 +29,36 @@ generate: install-templ install-tailwind
     tailwindcss -i web/styles/input.css -o web/assets/css/output.css
 
 # Test the application
-test: generate
-    go test ./...
+test: generate install-gotestsum
+    gotestsum -- ./...
+
+# Rerun the tests of changed packages
+test-watch: generate install-gotestsum
+    gotestsum --watch
 
 # Run the database integration tests (requires Docker)
-itest:
-    go test -tags integration ./database
+itest: install-gotestsum
+    gotestsum -- -tags integration ./database
+
+# Generate Go code from the SQL queries
+sqlc: install-sqlc
+    sqlc generate
+
+# Apply all pending migrations
+migrate-up: install-goose
+    goose up
+
+# Roll back the latest migration
+migrate-down: install-goose
+    goose down
+
+# Show the migration status
+migrate-status: install-goose
+    goose status
+
+# Create a migration, e.g. just migrate-new add_email
+migrate-new name: install-goose
+    goose -s create {{ name }} sql
 
 # Lint the application
 lint: generate install-golangci-lint
@@ -76,6 +103,30 @@ install-templ:
     command -v templ >/dev/null && exit 0
     echo "warning: templ not found, installing github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2) system-wide with go install" >&2
     go install "github.com/a-h/templ/cmd/templ@$(go list -m github.com/a-h/templ | cut -d' ' -f2)"
+
+[private]
+install-sqlc:
+    #!/bin/sh
+    set -eu
+    command -v sqlc >/dev/null && exit 0
+    echo "warning: sqlc not found, installing github.com/sqlc-dev/sqlc/cmd/sqlc@$SQLC_VERSION system-wide with go install" >&2
+    go install "github.com/sqlc-dev/sqlc/cmd/sqlc@$SQLC_VERSION"
+
+[private]
+install-goose:
+    #!/bin/sh
+    set -eu
+    command -v goose >/dev/null && exit 0
+    echo "warning: goose not found, installing github.com/pressly/goose/v3/cmd/goose@$GOOSE_VERSION system-wide with go install" >&2
+    go install "github.com/pressly/goose/v3/cmd/goose@$GOOSE_VERSION"
+
+[private]
+install-gotestsum:
+    #!/bin/sh
+    set -eu
+    command -v gotestsum >/dev/null && exit 0
+    echo "warning: gotestsum not found, installing gotest.tools/gotestsum@$GOTESTSUM_VERSION system-wide with go install" >&2
+    go install "gotest.tools/gotestsum@$GOTESTSUM_VERSION"
 
 [private]
 install-tailwind:

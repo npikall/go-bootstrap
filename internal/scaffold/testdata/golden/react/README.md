@@ -13,6 +13,9 @@ task lint
 task docker-run
 ```
 
+`task test` runs the tests with [gotestsum](https://github.com/gotestyourself/gotestsum),
+`task test-watch` reruns them when files change.
+
 Run `task --list` to see all targets.
 Missing development tools are installed system-wide on first use with
 `go install` (pinned versions), after printing a warning.
