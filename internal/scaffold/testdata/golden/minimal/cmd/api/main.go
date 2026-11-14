@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -33,13 +35,18 @@ func gracefulShutdown(srv *http.Server, done chan bool) {
 }
 
 func main() {
+	ln, err := net.Listen("tcp", ":"+os.Getenv("PORT"))
+	if err != nil {
+		log.Fatalln("listen error:", err)
+	}
+	log.Printf("listening on %s", ln.Addr())
+
 	srv := server.NewServer()
 
 	done := make(chan bool, 1)
 	go gracefulShutdown(srv, done)
 
-	err := srv.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalln("http server error:", err)
 	}
 

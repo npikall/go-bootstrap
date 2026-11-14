@@ -2,7 +2,6 @@ package server
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/acme/demo/database"
@@ -16,7 +15,6 @@ func NewServer() *http.Server {
 	s := &Server{db: database.New()}
 
 	return &http.Server{
-		Addr:         ":" + os.Getenv("PORT"),
 		Handler:      s.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,

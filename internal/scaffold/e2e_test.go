@@ -1,12 +1,15 @@
 package scaffold
 
 import (
+	"bufio"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 // TestEndToEnd generates real projects and builds, vets, tests and lints them.
@@ -54,6 +57,9 @@ func TestEndToEnd(t *testing.T) {
 			}
 			mustRun(t, dir, "go", "vet", "-tags", "integration", "./...")
 			mustRun(t, dir, "go", "test", "./...")
+			if opts.Database == "none" {
+				checkFirstLineIsListenAddress(t, dir)
+			}
 			if _, err := exec.LookPath("golangci-lint"); err == nil {
 				mustRun(t, dir, "golangci-lint", "run", "--allow-parallel-runners", "./...")
 			}
@@ -69,6 +75,46 @@ func TestEndToEnd(t *testing.T) {
 				mustRun(t, filepath.Join(dir, "frontend"), "npm", "run", "build")
 			}
 		})
+	}
+}
+
+// checkFirstLineIsListenAddress starts the generated server and requires that the
+// first thing it prints tells the user where it is listening.
+func checkFirstLineIsListenAddress(t *testing.T, dir string) {
+	t.Helper()
+	bin := filepath.Join(t.TempDir(), "api")
+	mustRun(t, dir, "go", "build", "-o", bin, "./cmd/api")
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	cmd := exec.Command(bin)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PORT=0")
+	cmd.Stdout, cmd.Stderr = w, w
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+
+	line := make(chan string, 1)
+	go func() {
+		s := bufio.NewScanner(r)
+		s.Scan()
+		line <- s.Text()
+	}()
+	select {
+	case got := <-line:
+		if !strings.Contains(got, "listening on ") {
+			t.Errorf("first output line = %q, want the listen address", got)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("server printed nothing within 30s")
 	}
 }
 

@@ -16,6 +16,8 @@ func New() *FiberServer {
 		App: fiber.New(fiber.Config{
 			ServerHeader: "demo",
 			AppName:      "demo",
+			// main logs the listen address, so the banner would only repeat it.
+			DisableStartupMessage: true,
 		}),
 		db: database.New(),
 	}

@@ -6,11 +6,11 @@ import (
 	"errors"
 {% endif %}
 	"log"
+	"net"
 {% if not fiber %}
 	"net/http"
-{% else %}
-	"os"
 {% endif %}
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -47,6 +47,12 @@ func gracefulShutdown(srv *http.Server, done chan bool) {
 }
 
 func main() {
+	ln, err := net.Listen("tcp", ":"+os.Getenv("PORT"))
+	if err != nil {
+		log.Fatalln("listen error:", err)
+	}
+	log.Printf("listening on %s", ln.Addr())
+
 {% if fiber %}
 	srv := server.New()
 	srv.RegisterFiberRoutes()
@@ -58,12 +64,11 @@ func main() {
 	go gracefulShutdown(srv, done)
 
 {% if fiber %}
-	if err := srv.Listen(":" + os.Getenv("PORT")); err != nil {
+	if err := srv.Listener(ln); err != nil {
 		log.Fatalln("http server error:", err)
 	}
 {% else %}
-	err := srv.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalln("http server error:", err)
 	}
 {% endif %}

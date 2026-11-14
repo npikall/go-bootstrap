@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -32,13 +33,19 @@ func gracefulShutdown(srv *server.FiberServer, done chan bool) {
 }
 
 func main() {
+	ln, err := net.Listen("tcp", ":"+os.Getenv("PORT"))
+	if err != nil {
+		log.Fatalln("listen error:", err)
+	}
+	log.Printf("listening on %s", ln.Addr())
+
 	srv := server.New()
 	srv.RegisterFiberRoutes()
 
 	done := make(chan bool, 1)
 	go gracefulShutdown(srv, done)
 
-	if err := srv.Listen(":" + os.Getenv("PORT")); err != nil {
+	if err := srv.Listener(ln); err != nil {
 		log.Fatalln("http server error:", err)
 	}
 

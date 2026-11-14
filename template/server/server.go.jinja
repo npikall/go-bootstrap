@@ -5,7 +5,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 {% else %}
 	"net/http"
-	"os"
 	"time"
 {% endif %}
 {% if has_db %}
@@ -27,6 +26,8 @@ func New() *FiberServer {
 		App: fiber.New(fiber.Config{
 			ServerHeader: "{{ project_name }}",
 			AppName:      "{{ project_name }}",
+			// main logs the listen address, so the banner would only repeat it.
+			DisableStartupMessage: true,
 		}),
 {% if has_db %}
 		db: database.New(),
@@ -50,7 +51,6 @@ func NewServer() *http.Server {
 {% endif %}
 
 	return &http.Server{
-		Addr:         ":" + os.Getenv("PORT"),
 		Handler:      s.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
