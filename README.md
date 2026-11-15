@@ -23,6 +23,7 @@ go-bootstrap create \
   --module github.com/me/myapp \
   --framework chi \
   --driver postgres \
+  --frontend html \
   --feature htmx,tailwind,docker,githubaction \
   --tool sqlc,goose,gotestsum \
   --runner just \
@@ -35,13 +36,23 @@ go-bootstrap create \
 | `-module`          | Go module path                                                                                     | project name       |
 | `-framework`, `-f` | `chi`, `gin`, `fiber`, `gorilla/mux`, `httprouter`, `standard-library`, `echo`                     | `standard-library` |
 | `-driver`, `-d`    | `mysql`, `postgres`, `sqlite`, `mongo`, `redis`, `scylla`, `none`                                  | `none`             |
-| `-feature`         | `react`, `htmx`, `githubaction`, `websocket`, `tailwind`, `docker` (repeatable or comma separated) | none               |
+| `-frontend`        | `none`, `html`, `templ`, `react`                                                                   | `none`             |
+| `-feature`         | `htmx`, `tailwind`, `githubaction`, `websocket`, `docker` (repeatable or comma separated)          | none               |
 | `-tool`            | `sqlc`, `goose`, `gotestsum` (repeatable or comma separated)                                       | none               |
 | `-runner`          | `make`, `just`, `task`                                                                             | `make`             |
 | `-git`, `-g`       | `commit`, `stage`, `skip`                                                                          | `commit`           |
 
-`react` and `htmx` are mutually exclusive. `tailwind` without `react` adds a
-templ frontend styled with the Tailwind standalone CLI.
+Frontends:
+
+- `html` renders pages with `html/template` from the standard library. The
+  templates live in `web/templates` and are embedded into the binary.
+- `templ` renders pages with [templ](https://templ.guide) components in `web`.
+- `react` adds a Vite + TypeScript app in `frontend`, next to the API.
+
+`htmx` needs the `html` or `templ` frontend: the form then posts with htmx and
+the server answers with a fragment, without it the form posts normally and the
+server renders the whole page. `tailwind` needs a frontend, with `html` and
+`templ` it uses the Tailwind standalone CLI, with `react` the Vite plugin.
 
 `sqlc` and `goose` need a SQL driver (`mysql`, `postgres` or `sqlite`):
 
@@ -60,7 +71,8 @@ project uses templ) and sets up git.
 
 ## Generated projects
 
-- Layout: `cmd/api`, `server`, `database`, `web` (templ) and `frontend` (React).
+- Layout: `cmd/api`, `server`, `database`, `web` (html/template or templ) and
+  `frontend` (React).
 - Development tools (air, golangci-lint, templ, tailwindcss, sqlc, goose,
   gotestsum) are not in the `go.mod` tools directive, so their dependencies
   don't mix with the project's.

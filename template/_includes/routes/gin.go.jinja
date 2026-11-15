@@ -3,12 +3,9 @@ package server
 import (
 	"net/http"
 
-{% if templ %}
-	"github.com/a-h/templ"
-{% endif %}
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-{% if templ %}
+{% if web %}
 
 	"{{ module_path }}/web"
 {% endif %}
@@ -25,10 +22,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 {% if websocket %}
 	r.GET("/websocket", gin.WrapF(s.websocketHandler))
 {% endif %}
-{% if templ %}
+{% if web %}
 
+{% if web_assets %}
 	r.GET("/assets/*filepath", gin.WrapH(http.FileServer(http.FS(web.Files))))
-	r.GET("/web", gin.WrapH(templ.Handler(web.HelloForm())))
+{% endif %}
+	r.GET("/web", gin.WrapF(web.HelloFormHandler))
 	r.POST("/hello", gin.WrapF(web.HelloWebHandler))
 {% endif %}
 

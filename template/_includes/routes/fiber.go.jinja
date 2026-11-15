@@ -1,21 +1,19 @@
 package server
 
 import (
-{% if templ %}
+{% if web_assets %}
 	"net/http"
 
-	"github.com/a-h/templ"
 {% endif %}
 {% if websocket %}
 	"github.com/gofiber/contrib/websocket"
 {% endif %}
 	"github.com/gofiber/fiber/v2"
-{% if templ %}
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
-{% endif %}
 	"github.com/gofiber/fiber/v2/middleware/cors"
-{% if templ %}
+{% if web_assets %}
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
+{% endif %}
+{% if web %}
 
 	"{{ module_path }}/web"
 {% endif %}
@@ -31,13 +29,15 @@ func (s *FiberServer) RegisterFiberRoutes() {
 {% if websocket %}
 	s.Get("/websocket", websocket.New(s.websocketHandler))
 {% endif %}
-{% if templ %}
+{% if web %}
 
+{% if web_assets %}
 	s.Use("/assets", filesystem.New(filesystem.Config{
 		Root:       http.FS(web.Files),
 		PathPrefix: "assets",
 	}))
-	s.Get("/web", adaptor.HTTPHandler(templ.Handler(web.HelloForm())))
+{% endif %}
+	s.Get("/web", web.HelloFormHandler)
 	s.Post("/hello", web.HelloWebHandler)
 {% endif %}
 }

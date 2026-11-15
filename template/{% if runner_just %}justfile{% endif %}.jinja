@@ -40,37 +40,39 @@ default:
 all: build test
 
 # Build the application
-build:{% if templ %} generate{% endif %}
+build:{% if generate %} generate{% endif %}
 
     go build -o main ./cmd/api
 
 # Run the application
-run:{% if templ %} generate{% endif %}{% if react %} install-frontend{% endif %}
+run:{% if generate %} generate{% endif %}{% if react %} install-frontend{% endif %}
 
 {% if react %}
     trap 'kill 0' EXIT; go run ./cmd/api & npm run dev --prefix frontend
 {% else %}
     go run ./cmd/api
 {% endif %}
+{% if generate %}
+
+# Generate {% if templ %}templ{% endif %}{% if templ and tailwind_cli %} and {% endif %}{% if tailwind_cli %}tailwind{% endif %} files
+generate:{% if templ %} install-templ{% endif %}{% if tailwind_cli %} install-tailwind{% endif %}
+
 {% if templ %}
-
-# Generate templ{% if tailwind_cli %} and tailwind{% endif %} files
-generate: install-templ{% if tailwind_cli %} install-tailwind{% endif %}
-
     templ generate
+{% endif %}
 {% if tailwind_cli %}
     tailwindcss -i web/styles/input.css -o web/assets/css/output.css
 {% endif %}
 {% endif %}
 
 # Test the application
-test:{% if templ %} generate{% endif %}{% if gotestsum %} install-gotestsum{% endif %}
+test:{% if generate %} generate{% endif %}{% if gotestsum %} install-gotestsum{% endif %}
 
     {{ go_test }} ./...
 {% if gotestsum %}
 
 # Rerun the tests of changed packages
-test-watch:{% if templ %} generate{% endif %} install-gotestsum
+test-watch:{% if generate %} generate{% endif %} install-gotestsum
     gotestsum --watch
 {% endif %}
 {% if external_db %}
@@ -106,7 +108,7 @@ migrate-new name: install-goose
 {% endif %}
 
 # Lint the application
-lint:{% if templ %} generate{% endif %} install-golangci-lint
+lint:{% if generate %} generate{% endif %} install-golangci-lint
     golangci-lint run
 
 # Format the code with the formatters in .golangci.yml
@@ -114,7 +116,7 @@ fmt: install-golangci-lint
     golangci-lint fmt
 
 # Check for known vulnerabilities
-vuln:{% if templ %} generate{% endif %} install-govulncheck
+vuln:{% if generate %} generate{% endif %} install-govulncheck
     govulncheck ./...
 
 # Clean the binary

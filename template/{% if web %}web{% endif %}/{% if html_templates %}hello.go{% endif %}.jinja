@@ -1,0 +1,55 @@
+package web
+
+import (
+	"embed"
+	"html/template"
+{% if fiber %}
+
+	"github.com/gofiber/fiber/v2"
+{% else %}
+	"log"
+	"net/http"
+{% endif %}
+)
+
+//go:embed "templates"
+var templateFiles embed.FS
+
+// templates holds every page and fragment in web/templates, parsed once at startup.
+var templates = template.Must(template.ParseFS(templateFiles, "templates/*.html"))
+
+{% set post = "\"hello\"" if htmx else "\"base\"" %}
+{% if fiber %}
+func HelloFormHandler(c *fiber.Ctx) error {
+	return render(c, "base", "")
+}
+
+func HelloWebHandler(c *fiber.Ctx) error {
+	return render(c, {{ post }}, c.FormValue("name"))
+}
+
+func render(c *fiber.Ctx, name string, data any) error {
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return templates.ExecuteTemplate(c.Response().BodyWriter(), name, data)
+}
+{% else %}
+func HelloFormHandler(w http.ResponseWriter, _ *http.Request) {
+	render(w, "base", "")
+}
+
+func HelloWebHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	render(w, {{ post }}, r.FormValue("name"))
+}
+
+func render(w http.ResponseWriter, name string, data any) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := templates.ExecuteTemplate(w, name, data); err != nil {
+		log.Printf("Error rendering template %s: %v", name, err)
+	}
+}
+{% endif %}

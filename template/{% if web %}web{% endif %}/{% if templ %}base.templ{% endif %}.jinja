@@ -10,7 +10,9 @@ templ Base() {
 {% if tailwind_cli %}
 			<link href="assets/css/output.css" rel="stylesheet"/>
 {% endif %}
+{% if htmx %}
 			<script src="assets/js/htmx.min.js"></script>
+{% endif %}
 		</head>
 		<body>
 {% if tailwind_cli %}

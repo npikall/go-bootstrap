@@ -1,0 +1,14 @@
+{{/* The page content inside base, its data is the submitted name. */}}
+{{define "content"}}
+<form action="/hello" method="POST">
+	<input id="name" name="name" type="text">
+	<button type="submit">Submit</button>
+</form>
+<div id="hello-container">{{with .}}{{template "hello" .}}{{end}}</div>
+{{end}}
+
+{{define "hello"}}
+<div>
+	<p>Hello, {{.}}</p>
+</div>
+{{end}}

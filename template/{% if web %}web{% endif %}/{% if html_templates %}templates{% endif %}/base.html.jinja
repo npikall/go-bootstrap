@@ -1,0 +1,23 @@
+{% raw %}{{define "base"}}{% endraw %}
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>{{ project_name }}</title>
+{% if tailwind_cli %}
+		<link href="assets/css/output.css" rel="stylesheet">
+{% endif %}
+{% if htmx %}
+		<script src="assets/js/htmx.min.js"></script>
+{% endif %}
+	</head>
+	<body>
+		<main{% if tailwind_cli %} class="mx-auto max-w-xl p-8"{% endif %}>
+			{{ '{{template "content" .}}' }}
+		</main>
+	</body>
+</html>
+{% raw %}{{end}}{% endraw %}
+

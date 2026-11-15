@@ -111,6 +111,7 @@ func newFlagSet(opts *scaffold.Options, output io.Writer) *flag.FlagSet {
 	stringFlag(&opts.ModulePath, "module", "", "go module path (default: project name)")
 	stringFlag(&opts.Framework, "framework", "f", "framework: "+strings.Join(scaffold.Frameworks, ", "))
 	stringFlag(&opts.Database, "driver", "d", "database driver: "+strings.Join(scaffold.Databases, ", "))
+	stringFlag(&opts.Frontend, "frontend", "", "frontend: "+strings.Join(scaffold.Frontends, ", "))
 	stringFlag(&opts.Runner, "runner", "", "task runner: "+strings.Join(scaffold.Runners, ", "))
 	stringFlag(&opts.Git, "git", "g", "git setup: "+strings.Join(scaffold.GitModes, ", "))
 	listFlag := func(p *[]string, name, help string, allowed []string) {

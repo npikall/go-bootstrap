@@ -1,0 +1,12 @@
+package web
+
+import "embed"
+
+{% if assets_placeholder %}
+// The all: prefix embeds the placeholder, so the directory exists before tailwind generates its output.
+//
+//go:embed all:assets
+{% else %}
+//go:embed "assets"
+{% endif %}
+var Files embed.FS

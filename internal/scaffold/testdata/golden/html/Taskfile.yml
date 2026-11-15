@@ -1,0 +1,133 @@
+version: "3"
+
+# The variables in .env are exported to every task.
+dotenv: [".env"]
+
+# Missing development tools are installed system-wide with `go install`.
+vars:
+  GOBIN_DIR:
+    sh: d=$(go env GOBIN); echo "${d:-$(go env GOPATH)/bin}"
+  # A tool on PATH wins, otherwise it is used from where `go install` puts it.
+  AIR:
+    sh: command -v air || echo "{{.GOBIN_DIR}}/air"
+  GOLANGCI_LINT:
+    sh: command -v golangci-lint || echo "{{.GOBIN_DIR}}/golangci-lint"
+  GOVULNCHECK:
+    sh: command -v govulncheck || echo "{{.GOBIN_DIR}}/govulncheck"
+  TAILWINDCSS:
+    sh: command -v tailwindcss || echo "{{.GOBIN_DIR}}/tailwindcss"
+
+env:
+  AIR_VERSION: v1.67.4
+  GOLANGCI_LINT_VERSION: v2.15.0
+  GOVULNCHECK_VERSION: v1.9.0
+  TAILWIND_VERSION: v4.3.5
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  all:
+    desc: Build and test the application
+    cmds:
+      - task: build
+      - task: test
+
+  build:
+    desc: Build the application
+    deps: [generate]
+    cmds:
+      - go build -o main ./cmd/api
+
+  run:
+    desc: Run the application
+    deps: [generate]
+    cmds:
+      - go run ./cmd/api
+
+  generate:
+    desc: Generate tailwind files
+    deps: [install-tailwind]
+    cmds:
+      - '"{{.TAILWINDCSS}}" -i web/styles/input.css -o web/assets/css/output.css'
+
+  test:
+    desc: Test the application
+    deps: [generate]
+    cmds:
+      - 'go test ./...'
+
+  lint:
+    desc: Lint the application
+    deps: [generate, install-golangci-lint]
+    cmds:
+      - '"{{.GOLANGCI_LINT}}" run'
+
+  fmt:
+    desc: Format the code with the formatters in .golangci.yml
+    deps: [install-golangci-lint]
+    cmds:
+      - '"{{.GOLANGCI_LINT}}" fmt'
+
+  vuln:
+    desc: Check for known vulnerabilities
+    deps: [generate, install-govulncheck]
+    cmds:
+      - '"{{.GOVULNCHECK}}" ./...'
+
+  clean:
+    desc: Clean the binary
+    cmds:
+      - rm -f main
+
+  watch:
+    desc: Live Reload
+    deps: [install-air]
+    cmds:
+      - '"{{.AIR}}"'
+
+  install-air:
+    internal: true
+    status:
+      - test -x "{{.AIR}}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: air not found, installing github.com/air-verse/air@$AIR_VERSION system-wide with go install" >&2
+      - go install "github.com/air-verse/air@$AIR_VERSION"
+
+  install-golangci-lint:
+    internal: true
+    status:
+      - test -x "{{.GOLANGCI_LINT}}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: golangci-lint not found, installing github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION system-wide with go install" >&2
+      - go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$GOLANGCI_LINT_VERSION"
+
+  install-govulncheck:
+    internal: true
+    status:
+      - test -x "{{.GOVULNCHECK}}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: govulncheck not found, installing golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION system-wide with go install" >&2
+      - go install "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION"
+
+  install-tailwind:
+    internal: true
+    status:
+      - test -x "{{.TAILWINDCSS}}"
+    cmds:
+      - silent: true
+        cmd: >-
+          echo "warning: tailwindcss not found, downloading $TAILWIND_VERSION system-wide into {{.GOBIN_DIR}}" >&2
+      - mkdir -p "{{.GOBIN_DIR}}"
+      - >-
+        curl -sSfL -o "{{.TAILWINDCSS}}"
+        "https://github.com/tailwindlabs/tailwindcss/releases/download/$TAILWIND_VERSION/tailwindcss-$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/macos/')-$(uname -m | sed -e 's/x86_64/x64/' -e 's/aarch64/arm64/')"
+      - chmod +x "{{.TAILWINDCSS}}"

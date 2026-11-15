@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -23,7 +22,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.Get("/websocket", s.websocketHandler)
 
 	r.Handle("/assets/*", http.FileServer(http.FS(web.Files)))
-	r.Method(http.MethodGet, "/web", templ.Handler(web.HelloForm()))
+	r.Get("/web", web.HelloFormHandler)
 	r.Post("/hello", web.HelloWebHandler)
 
 	return r

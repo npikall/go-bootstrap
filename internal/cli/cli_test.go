@@ -18,6 +18,7 @@ func TestParseFlags(t *testing.T) {
 		"--module", "github.com/acme/demo",
 		"-f", "chi",
 		"--driver", "postgres",
+		"--frontend", "html",
 		"--feature", "htmx,tailwind",
 		"--feature", "docker",
 		"--runner", "just",
@@ -28,7 +29,7 @@ func TestParseFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	if opts.Name != "demo" || opts.ModulePath != "github.com/acme/demo" || opts.Framework != "chi" ||
-		opts.Database != "postgres" || opts.Runner != "just" || opts.Git != "commit" {
+		opts.Database != "postgres" || opts.Frontend != "html" || opts.Runner != "just" || opts.Git != "commit" {
 		t.Errorf("unexpected options: %+v", opts)
 	}
 	if want := []string{"htmx", "tailwind", "docker"}; !slices.Equal(opts.Features, want) {
@@ -37,18 +38,18 @@ func TestParseFlags(t *testing.T) {
 	if want := []string{"sqlc", "goose", "gotestsum"}; !slices.Equal(opts.Tools, want) {
 		t.Errorf("tools = %v, want %v", opts.Tools, want)
 	}
-	wantSet := []string{"driver", "feature", "framework", "module", "name", "runner", "tool"}
+	wantSet := []string{"driver", "feature", "framework", "frontend", "module", "name", "runner", "tool"}
 	if got := slices.Sorted(maps.Keys(set)); !slices.Equal(got, wantSet) {
 		t.Errorf("set flags = %v, want %v", got, wantSet)
 	}
 }
 
 func TestParseFlagsRejectsInvalidChoices(t *testing.T) {
-	_, _, err := parseFlags([]string{"-framework", "rails", "-feature", "react,htmx", "-tool", "sqlc"}, io.Discard)
+	_, _, err := parseFlags([]string{"-framework", "rails", "-frontend", "react", "-feature", "htmx", "-tool", "sqlc"}, io.Discard)
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	for _, want := range []string{"invalid framework", "mutually exclusive", "sqlc requires"} {
+	for _, want := range []string{"invalid framework", "htmx requires", "sqlc requires"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not contain %q", err, want)
 		}
@@ -82,14 +83,14 @@ func TestRunUnknownCommand(t *testing.T) {
 }
 
 func TestPromptFieldsAskOnlyForOptionsNotGivenAsFlags(t *testing.T) {
-	all := []string{"name", "module", "framework", "driver", "feature", "tool", "runner", "git"}
+	all := []string{"name", "module", "framework", "driver", "frontend", "feature", "tool", "runner", "git"}
 	tests := map[string]struct {
 		set  []string
 		want []string
 	}{
 		"no flags":      {set: nil, want: all},
 		"all flags":     {set: all, want: nil},
-		"only the rest": {set: []string{"name", "driver", "runner"}, want: []string{"module", "framework", "feature", "tool", "git"}},
+		"only the rest": {set: []string{"name", "driver", "runner"}, want: []string{"module", "framework", "frontend", "feature", "tool", "git"}},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {

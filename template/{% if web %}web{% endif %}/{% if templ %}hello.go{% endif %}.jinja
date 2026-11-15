@@ -1,0 +1,46 @@
+package web
+
+import (
+{% if not fiber %}
+	"log"
+	"net/http"
+
+{% endif %}
+	"github.com/a-h/templ"
+{% if fiber %}
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
+{% endif %}
+)
+
+{% set form = "HelloForm()" if htmx else "HelloForm(\"\")" %}
+{% set post = "HelloPost" if htmx else "HelloForm" %}
+{% if fiber %}
+var helloForm = adaptor.HTTPHandler(templ.Handler({{ form }}))
+
+func HelloFormHandler(c *fiber.Ctx) error {
+	return helloForm(c)
+}
+
+func HelloWebHandler(c *fiber.Ctx) error {
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+	return {{ post }}(c.FormValue("name")).Render(c.UserContext(), c.Response().BodyWriter())
+}
+{% else %}
+var helloForm = templ.Handler({{ form }})
+
+func HelloFormHandler(w http.ResponseWriter, r *http.Request) {
+	helloForm.ServeHTTP(w, r)
+}
+
+func HelloWebHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	if err := {{ post }}(r.FormValue("name")).Render(r.Context(), w); err != nil {
+		log.Printf("Error rendering in HelloWebHandler: %v", err)
+	}
+}
+{% endif %}

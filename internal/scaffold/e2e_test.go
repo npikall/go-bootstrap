@@ -25,25 +25,33 @@ func TestEndToEnd(t *testing.T) {
 		runTargets bool // also run the build, test and vuln targets of the task runner
 	}
 	cases := map[string]e2eCase{}
-	add := func(name, fw, db, runner string, features, tools []string, runTargets bool) {
+	add := func(name, fw, db, runner string, set frontendSet, tools []string, runTargets bool) {
 		opts := testOptions(func(o *Options) {
-			o.Name, o.Framework, o.Database, o.Runner, o.Features, o.Git = name, fw, db, runner, features, "skip"
+			o.Name, o.Framework, o.Database, o.Runner, o.Git = name, fw, db, runner, "skip"
+			o.Frontend, o.Features = set.frontend, set.features
 			o.GoVersion = ToolchainGoVersion() // the generated go.mod must accept the toolchain that builds it
 			o.Tools = applicableTools(tools, db)
 		})
 		cases[name] = e2eCase{opts: opts, runTargets: runTargets}
 	}
 	for i, fw := range Frameworks {
-		add("full-"+fw[:3], fw, Databases[i], Runners[i%len(Runners)], featureSets["htmx"], Tools, false)
-		add("bare-"+fw[:3], fw, "none", "make", nil, nil, false)
+		add("full-"+fw[:3], fw, Databases[i], Runners[i%len(Runners)], frontendSets["htmx"], Tools, false)
+		add("html-"+fw[:3], fw, "none", Runners[(i+1)%len(Runners)], frontendSets["html-htmx"], nil, false)
+		add("bare-"+fw[:3], fw, "none", "make", frontendSets["none"], nil, false)
 	}
-	add("react-fiber", "fiber", "sqlite", "task", append(slices.Clone(featureSets["react"]), "websocket"), Tools, true)
-	add("react-gin", "gin", "redis", "just", featureSets["react"], nil, false)
-	add("tailwind-make", "standard-library", "sqlite", "make", featureSets["tailwind"], []string{"sqlc", "gotestsum"}, true)
-	add("tailwind-just", "echo", "none", "just", featureSets["tailwind"], nil, true)
-	add("tailwind-task", "httprouter", "none", "task", featureSets["tailwind"], nil, true)
-	add("tools-make", "chi", "sqlite", "make", nil, Tools, true)
-	add("tools-just", "standard-library", "sqlite", "just", nil, Tools, true)
+	react := frontendSets["react"]
+	reactWS := frontendSet{"react", append(slices.Clone(react.features), "websocket")}
+	add("react-fiber", "fiber", "sqlite", "task", reactWS, Tools, true)
+	add("react-gin", "gin", "redis", "just", react, nil, false)
+	add("tailwind-make", "standard-library", "sqlite", "make", frontendSets["tailwind"], []string{"sqlc", "gotestsum"}, true)
+	add("tailwind-just", "echo", "none", "just", frontendSets["tailwind"], nil, true)
+	add("tailwind-task", "httprouter", "none", "task", frontendSets["tailwind"], nil, true)
+	add("templ-plain", "gin", "none", "make", frontendSets["templ-plain"], nil, true)
+	add("html-tw-make", "chi", "none", "make", frontendSets["html-tw"], nil, true)
+	add("html-tw-task", "fiber", "none", "task", frontendSets["html-tw"], nil, true)
+	add("html-plain", "gorilla/mux", "none", "just", frontendSets["html-plain"], nil, true)
+	add("tools-make", "chi", "sqlite", "make", frontendSets["none"], Tools, true)
+	add("tools-just", "standard-library", "sqlite", "just", frontendSets["none"], Tools, true)
 
 	tmpl := os.DirFS(templateDir)
 	root := t.TempDir()

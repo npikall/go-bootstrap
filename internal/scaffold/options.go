@@ -13,7 +13,8 @@ import (
 var (
 	Frameworks = []string{"chi", "gin", "fiber", "gorilla/mux", "httprouter", "standard-library", "echo"}
 	Databases  = []string{"mysql", "postgres", "sqlite", "mongo", "redis", "scylla", "none"}
-	Features   = []string{"react", "htmx", "githubaction", "websocket", "tailwind", "docker"}
+	Frontends  = []string{"none", "html", "templ", "react"}
+	Features   = []string{"htmx", "tailwind", "githubaction", "websocket", "docker"}
 	Tools      = []string{"sqlc", "goose", "gotestsum"}
 	Runners    = []string{"make", "just", "task"}
 	GitModes   = []string{"commit", "stage", "skip"}
@@ -50,6 +51,7 @@ type Options struct {
 	GoVersion  string
 	Framework  string
 	Database   string
+	Frontend   string
 	Features   []string
 	Tools      []string
 	Runner     string
@@ -61,6 +63,7 @@ func Defaults() Options {
 	return Options{
 		Framework: "standard-library",
 		Database:  "none",
+		Frontend:  "none",
 		Runner:    "make",
 		Git:       "commit",
 	}
@@ -99,9 +102,10 @@ func (o Options) ValidateChoices() error {
 	return errors.Join(
 		oneOf("framework", o.Framework, Frameworks),
 		oneOf("database driver", o.Database, Databases),
+		oneOf("frontend", o.Frontend, Frontends),
 		oneOf("runner", o.Runner, Runners),
 		oneOf("git option", o.Git, GitModes),
-		ValidateFeatures(o.Features),
+		ValidateFeatures(o.Features, o.Frontend),
 		ValidateTools(o.Tools, o.Database),
 	)
 }
@@ -119,16 +123,24 @@ func ValidateTools(tools []string, database string) error {
 	return errors.Join(errs...)
 }
 
-// ValidateFeatures checks feature names and combinations.
-func ValidateFeatures(features []string) error {
+// ValidateFeatures checks feature names and that features needing a frontend get one.
+func ValidateFeatures(features []string, frontend string) error {
 	var errs []error
 	for _, f := range features {
 		errs = append(errs, oneOf("feature", f, Features))
 	}
-	if slices.Contains(features, "react") && slices.Contains(features, "htmx") {
-		errs = append(errs, errors.New("features react and htmx are mutually exclusive"))
+	if slices.Contains(features, "htmx") && !serverRendered(frontend) {
+		errs = append(errs, fmt.Errorf("feature htmx requires the html or templ frontend, got %q", frontend))
+	}
+	if slices.Contains(features, "tailwind") && frontend == "none" {
+		errs = append(errs, errors.New("feature tailwind requires a frontend"))
 	}
 	return errors.Join(errs...)
+}
+
+// serverRendered reports whether the frontend renders HTML in the Go server, in the web package.
+func serverRendered(frontend string) bool {
+	return frontend == "html" || frontend == "templ"
 }
 
 // Has reports whether the feature is enabled.
@@ -150,13 +162,15 @@ func (o Options) module() string {
 
 // usesTempl reports whether the project gets a templ based web frontend.
 func (o Options) usesTempl() bool {
-	return (o.Has("htmx") || o.Has("tailwind")) && !o.Has("react")
+	return o.Frontend == "templ"
 }
 
 // Data returns the variables available inside templates.
 func (o Options) Data() map[string]any {
 	externalDB := o.Database != "none" && o.Database != "sqlite"
 	dialect := sqlDialects[o.Database]
+	web := serverRendered(o.Frontend)
+	tailwindCLI := o.Has("tailwind") && web
 	data := map[string]any{
 		"project_name":   o.Name,
 		"module_path":    o.module(),
@@ -167,11 +181,21 @@ func (o Options) Data() map[string]any {
 		"database":       o.Database,
 		"has_db":         o.Database != "none",
 		"external_db":    externalDB,
+		"frontend":       o.Frontend,
+		"web":            web,
 		"templ":          o.usesTempl(),
+		"html_templates": o.Frontend == "html",
+		"react":          o.Frontend == "react",
 		"htmx":           o.Has("htmx"),
 		"tailwind":       o.Has("tailwind"),
-		"tailwind_cli":   o.Has("tailwind") && !o.Has("react"),
-		"react":          o.Has("react"),
+		"tailwind_cli":   tailwindCLI,
+		// web/assets is embedded and served when it holds htmx or the tailwind output.
+		"web_assets": o.Has("htmx") || tailwindCLI,
+		// Without htmx, web/assets only holds the generated tailwind output, so a placeholder
+		// keeps the directory embeddable before the first generate.
+		"assets_placeholder": tailwindCLI && !o.Has("htmx"),
+		// The generate target runs templ and the tailwind CLI.
+		"generate":       o.usesTempl() || tailwindCLI,
 		"websocket":      o.Has("websocket"),
 		"docker":         o.Has("docker"),
 		"github_actions": o.Has("githubaction"),

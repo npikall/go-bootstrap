@@ -33,19 +33,31 @@ func testOptions(mutate func(*Options)) Options {
 	return opts
 }
 
-var featureSets = map[string][]string{
-	"none":     nil,
-	"htmx":     {"htmx", "tailwind", "websocket", "docker", "githubaction"},
-	"tailwind": {"tailwind"},
-	"react":    {"react", "tailwind", "docker", "githubaction"},
+// frontendSet is a frontend with the features rendered alongside it.
+type frontendSet struct {
+	frontend string
+	features []string
 }
 
-// toolSets pairs each feature set with tools, so every runner renders every tool
+var frontendSets = map[string]frontendSet{
+	"none":        {"none", nil},
+	"htmx":        {"templ", []string{"htmx", "tailwind", "websocket", "docker", "githubaction"}},
+	"tailwind":    {"templ", []string{"tailwind"}},
+	"templ-plain": {"templ", nil},
+	"html-htmx":   {"html", []string{"htmx", "tailwind", "websocket", "docker", "githubaction"}},
+	"html-tw":     {"html", []string{"tailwind"}},
+	"html-plain":  {"html", nil},
+	"react":       {"react", []string{"tailwind", "docker", "githubaction"}},
+}
+
+// toolSets pairs each frontend set with tools, so every runner renders every tool
 // and sqlc renders both with goose migrations and with a plain schema file.
 var toolSets = map[string][]string{
-	"htmx":     Tools,
-	"tailwind": {"sqlc"},
-	"react":    {"goose", "gotestsum"},
+	"htmx":      Tools,
+	"tailwind":  {"sqlc"},
+	"html-htmx": {"goose", "sqlc"},
+	"html-tw":   {"gotestsum"},
+	"react":     {"goose", "gotestsum"},
 }
 
 // applicableTools drops the tools the database does not support.
@@ -59,16 +71,17 @@ func applicableTools(tools []string, database string) []string {
 	return out
 }
 
-// matrix covers every framework, database, runner and the representative feature and tool sets.
+// matrix covers every framework, database, runner and the representative frontend and tool sets.
 func matrix() map[string]Options {
 	cases := make(map[string]Options)
 	for _, fw := range Frameworks {
 		for _, db := range Databases {
-			for setName, features := range featureSets {
+			for setName, set := range frontendSets {
 				for _, runner := range Runners {
 					name := fmt.Sprintf("%s/%s/%s/%s", fw, db, setName, runner)
 					cases[name] = testOptions(func(o *Options) {
-						o.Framework, o.Database, o.Features, o.Runner = fw, db, features, runner
+						o.Framework, o.Database, o.Runner = fw, db, runner
+						o.Frontend, o.Features = set.frontend, set.features
 						o.Tools = applicableTools(toolSets[setName], db)
 					})
 				}
@@ -111,27 +124,32 @@ func checkFileSet(t *testing.T, opts Options, files map[string][]byte) {
 		return false
 	}
 	expect := map[string]bool{
-		"go.mod":               true,
-		"cmd/api/main.go":      true,
-		"server/routes.go":     true,
-		".golangci.yml":        true,
-		"Makefile":             opts.Runner == "make",
-		"justfile":             opts.Runner == "just",
-		"Taskfile.yml":         opts.Runner == "task",
-		"database":             data["has_db"].(bool),
-		"web":                  data["templ"].(bool),
-		"web/styles/input.css": data["tailwind_cli"].(bool),
-		"frontend":             opts.Has("react"),
-		"Dockerfile":           opts.Has("docker"),
-		"compose.yaml":         data["compose"].(bool),
-		".github":              opts.Has("githubaction"),
-		".goreleaser.yml":      opts.Has("githubaction"),
-		"server/websocket.go":  opts.Has("websocket"),
-		"sqlc.yaml":            opts.Uses("sqlc"),
-		"database/queries":     opts.Uses("sqlc"),
-		"database/store":       opts.Uses("sqlc"),
-		"database/schema.sql":  opts.Uses("sqlc") && !opts.Uses("goose"),
-		"database/migrations":  opts.Uses("goose"),
+		"go.mod":                  true,
+		"cmd/api/main.go":         true,
+		"server/routes.go":        true,
+		".golangci.yml":           true,
+		"Makefile":                opts.Runner == "make",
+		"justfile":                opts.Runner == "just",
+		"Taskfile.yml":            opts.Runner == "task",
+		"database":                data["has_db"].(bool),
+		"web":                     data["web"].(bool),
+		"web/efs.go":              data["web_assets"].(bool),
+		"web/hello.templ":         opts.Frontend == "templ",
+		"web/templates":           opts.Frontend == "html",
+		"web/assets/js":           data["web"].(bool) && opts.Has("htmx"),
+		"web/assets/css/.gitkeep": data["assets_placeholder"].(bool),
+		"web/styles/input.css":    data["tailwind_cli"].(bool),
+		"frontend":                opts.Frontend == "react",
+		"Dockerfile":              opts.Has("docker"),
+		"compose.yaml":            data["compose"].(bool),
+		".github":                 opts.Has("githubaction"),
+		".goreleaser.yml":         opts.Has("githubaction"),
+		"server/websocket.go":     opts.Has("websocket"),
+		"sqlc.yaml":               opts.Uses("sqlc"),
+		"database/queries":        opts.Uses("sqlc"),
+		"database/store":          opts.Uses("sqlc"),
+		"database/schema.sql":     opts.Uses("sqlc") && !opts.Uses("goose"),
+		"database/migrations":     opts.Uses("goose"),
 	}
 	for p, want := range expect {
 		if got := has(p); got != want {
@@ -210,11 +228,20 @@ var goldenCases = map[string]Options{
 	"minimal": testOptions(nil),
 	"htmx": testOptions(func(o *Options) {
 		o.Framework, o.Database, o.Runner = "chi", "postgres", "just"
-		o.Features, o.Tools = featureSets["htmx"], Tools
+		o.Frontend, o.Features, o.Tools = "templ", frontendSets["htmx"].features, Tools
+	}),
+	"html": testOptions(func(o *Options) {
+		o.Runner = "task"
+		o.Frontend, o.Features = "html", []string{"tailwind"}
+	}),
+	"html-htmx": testOptions(func(o *Options) {
+		o.Framework = "fiber"
+		o.Frontend, o.Features = "html", []string{"htmx"}
 	}),
 	"react": testOptions(func(o *Options) {
 		o.Framework, o.Database, o.Runner = "fiber", "mongo", "task"
-		o.Features = append(slices.Clone(featureSets["react"]), "websocket")
+		o.Frontend = "react"
+		o.Features = append(slices.Clone(frontendSets["react"].features), "websocket")
 		o.Tools = []string{"gotestsum"}
 	}),
 	"sqlite": testOptions(func(o *Options) {
@@ -345,8 +372,12 @@ func TestValidate(t *testing.T) {
 		"unknown framework":  {mutate: func(o *Options) { o.Framework = "rails" }, wantErr: "invalid framework"},
 		"unknown driver":     {mutate: func(o *Options) { o.Database = "oracle" }, wantErr: "invalid database driver"},
 		"unknown feature":    {mutate: func(o *Options) { o.Features = []string{"grpc"} }, wantErr: "invalid feature"},
+		"unknown frontend":   {mutate: func(o *Options) { o.Frontend = "vue" }, wantErr: "invalid frontend"},
+		"htmx with html":     {mutate: func(o *Options) { o.Frontend, o.Features = "html", []string{"htmx", "tailwind"} }},
+		"htmx with react":    {mutate: func(o *Options) { o.Frontend, o.Features = "react", []string{"htmx"} }, wantErr: "htmx requires"},
+		"htmx without front": {mutate: func(o *Options) { o.Features = []string{"htmx"} }, wantErr: "htmx requires"},
+		"tailwind with none": {mutate: func(o *Options) { o.Features = []string{"tailwind"} }, wantErr: "tailwind requires"},
 		"unknown runner":     {mutate: func(o *Options) { o.Runner = "bazel" }, wantErr: "invalid runner"},
-		"react and htmx":     {mutate: func(o *Options) { o.Features = []string{"react", "htmx"} }, wantErr: "mutually exclusive"},
 		"all tools with sql": {mutate: func(o *Options) { o.Database, o.Tools = "postgres", Tools }},
 		"unknown tool":       {mutate: func(o *Options) { o.Tools = []string{"bazel"} }, wantErr: "invalid tool"},
 		"sqlc without sql":   {mutate: func(o *Options) { o.Database, o.Tools = "mongo", []string{"sqlc"} }, wantErr: "sqlc requires"},

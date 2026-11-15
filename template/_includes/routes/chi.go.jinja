@@ -5,13 +5,10 @@ import (
 	"log"
 	"net/http"
 
-{% if templ %}
-	"github.com/a-h/templ"
-{% endif %}
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-{% if templ %}
+{% if web %}
 
 	"{{ module_path }}/web"
 {% endif %}
@@ -29,10 +26,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 {% if websocket %}
 	r.Get("/websocket", s.websocketHandler)
 {% endif %}
-{% if templ %}
+{% if web %}
 
+{% if web_assets %}
 	r.Handle("/assets/*", http.FileServer(http.FS(web.Files)))
-	r.Method(http.MethodGet, "/web", templ.Handler(web.HelloForm()))
+{% endif %}
+	r.Get("/web", web.HelloFormHandler)
 	r.Post("/hello", web.HelloWebHandler)
 {% endif %}
 

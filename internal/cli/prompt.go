@@ -49,13 +49,27 @@ func promptFields(opts *scaffold.Options, set map[string]bool) []huh.Field {
 		{"driver", func(key string) huh.Field {
 			return selectField(key, "Database driver", scaffold.Databases, &opts.Database)
 		}},
+		{"frontend", func(key string) huh.Field {
+			return huh.NewSelect[string]().
+				Key(key).
+				Title("Frontend").
+				Options(
+					huh.NewOption("none (JSON API only)", "none"),
+					huh.NewOption("html (html/template from the standard library)", "html"),
+					huh.NewOption("templ", "templ"),
+					huh.NewOption("react (Vite + TypeScript)", "react"),
+				).
+				Value(&opts.Frontend)
+		}},
 		{"feature", func(key string) huh.Field {
 			return huh.NewMultiSelect[string]().
 				Key(key).
 				Title("Advanced features").
+				Description("htmx needs the html or templ frontend, tailwind needs a frontend").
 				Options(huh.NewOptions(scaffold.Features...)...).
 				Value(&opts.Features).
-				Validate(scaffold.ValidateFeatures)
+				// The frontend question comes first, so opts.Frontend is final here.
+				Validate(func(features []string) error { return scaffold.ValidateFeatures(features, opts.Frontend) })
 		}},
 		{"tool", func(key string) huh.Field {
 			return huh.NewMultiSelect[string]().

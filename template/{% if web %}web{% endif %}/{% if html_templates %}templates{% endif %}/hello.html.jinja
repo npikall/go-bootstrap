@@ -1,0 +1,22 @@
+{% raw %}
+{{/* The page content inside base, its data is the submitted name. */}}
+{{define "content"}}
+{% endraw %}
+{% if htmx %}
+<form hx-post="/hello" method="POST" hx-target="#hello-container">
+{% else %}
+<form action="/hello" method="POST">
+{% endif %}
+	<input id="name" name="name" type="text">
+	<button type="submit">Submit</button>
+</form>
+{% raw %}
+<div id="hello-container">{{with .}}{{template "hello" .}}{{end}}</div>
+{{end}}
+
+{{define "hello"}}
+<div>
+	<p>Hello, {{.}}</p>
+</div>
+{{end}}
+{% endraw %}

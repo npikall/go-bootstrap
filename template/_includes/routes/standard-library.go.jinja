@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-{% if templ %}
-
-	"github.com/a-h/templ"
+{% if web %}
 
 	"{{ module_path }}/web"
 {% endif %}
@@ -22,10 +20,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 {% if websocket %}
 	mux.HandleFunc("GET /websocket", s.websocketHandler)
 {% endif %}
-{% if templ %}
+{% if web %}
 
+{% if web_assets %}
 	mux.Handle("GET /assets/", http.FileServer(http.FS(web.Files)))
-	mux.Handle("GET /web", templ.Handler(web.HelloForm()))
+{% endif %}
+	mux.HandleFunc("GET /web", web.HelloFormHandler)
 	mux.HandleFunc("POST /hello", web.HelloWebHandler)
 {% endif %}
 

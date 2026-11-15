@@ -80,7 +80,7 @@ tasks:
 
   build:
     desc: Build the application
-{% if templ %}
+{% if generate %}
     deps: [generate]
 {% endif %}
     cmds:
@@ -93,7 +93,7 @@ tasks:
 
   run-api:
     internal: true
-{% if templ %}
+{% if generate %}
     deps: [generate]
 {% endif %}
     cmds:
@@ -105,19 +105,21 @@ tasks:
     cmds:
       - npm run dev --prefix frontend
 {% else %}
-{% if templ %}
+{% if generate %}
     deps: [generate]
 {% endif %}
     cmds:
       - go run ./cmd/api
 {% endif %}
-{% if templ %}
+{% if generate %}
 
   generate:
-    desc: Generate templ{% if tailwind_cli %} and tailwind{% endif %} files
-    deps: [install-templ{% if tailwind_cli %}, install-tailwind{% endif %}]
+    desc: Generate {% if templ %}templ{% endif %}{% if templ and tailwind_cli %} and {% endif %}{% if tailwind_cli %}tailwind{% endif %} files
+    deps: [{% if templ %}install-templ{% endif %}{% if templ and tailwind_cli %}, {% endif %}{% if tailwind_cli %}install-tailwind{% endif %}]
     cmds:
+{% if templ %}
       - '"{{ '{{.TEMPL}}' }}" generate'
+{% endif %}
 {% if tailwind_cli %}
       - '"{{ '{{.TAILWINDCSS}}' }}" -i web/styles/input.css -o web/assets/css/output.css'
 {% endif %}
@@ -125,8 +127,8 @@ tasks:
 
   test:
     desc: Test the application
-{% if templ or gotestsum %}
-    deps: [{% if templ %}generate{% endif %}{% if templ and gotestsum %}, {% endif %}{% if gotestsum %}install-gotestsum{% endif %}]
+{% if generate or gotestsum %}
+    deps: [{% if generate %}generate{% endif %}{% if generate and gotestsum %}, {% endif %}{% if gotestsum %}install-gotestsum{% endif %}]
 {% endif %}
     cmds:
       - '{{ go_test }} ./...'
@@ -134,7 +136,7 @@ tasks:
 
   test-watch:
     desc: Rerun the tests of changed packages
-    deps: [{% if templ %}generate, {% endif %}install-gotestsum]
+    deps: [{% if generate %}generate, {% endif %}install-gotestsum]
     cmds:
       - '"{{ '{{.GOTESTSUM}}' }}" --watch'
 {% endif %}
@@ -187,7 +189,7 @@ tasks:
 
   lint:
     desc: Lint the application
-    deps: [{% if templ %}generate, {% endif %}install-golangci-lint]
+    deps: [{% if generate %}generate, {% endif %}install-golangci-lint]
     cmds:
       - '"{{ '{{.GOLANGCI_LINT}}' }}" run'
 
@@ -199,7 +201,7 @@ tasks:
 
   vuln:
     desc: Check for known vulnerabilities
-    deps: [{% if templ %}generate, {% endif %}install-govulncheck]
+    deps: [{% if generate %}generate, {% endif %}install-govulncheck]
     cmds:
       - '"{{ '{{.GOVULNCHECK}}' }}" ./...'
 

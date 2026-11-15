@@ -54,33 +54,35 @@ GOTESTSUM_VERSION := {{ gotestsum_version }}
 all: build test ## Build and test the application
 
 .PHONY: build
-build:{% if templ %} generate{% endif %} ## Build the application
+build:{% if generate %} generate{% endif %} ## Build the application
 	go build -o main ./cmd/api
 
 .PHONY: run
-run:{% if templ %} generate{% endif %}{% if react %} install-frontend{% endif %} ## Run the application
+run:{% if generate %} generate{% endif %}{% if react %} install-frontend{% endif %} ## Run the application
 {% if react %}
 	trap 'kill 0' EXIT; go run ./cmd/api & npm run dev --prefix frontend
 {% else %}
 	go run ./cmd/api
 {% endif %}
-{% if templ %}
+{% if generate %}
 
 .PHONY: generate
-generate: install-templ{% if tailwind_cli %} install-tailwind{% endif %} ## Generate templ{% if tailwind_cli %} and tailwind{% endif %} files
+generate:{% if templ %} install-templ{% endif %}{% if tailwind_cli %} install-tailwind{% endif %} ## Generate {% if templ %}templ{% endif %}{% if templ and tailwind_cli %} and {% endif %}{% if tailwind_cli %}tailwind{% endif %} files
+{% if templ %}
 	$(TEMPL) generate
+{% endif %}
 {% if tailwind_cli %}
 	$(TAILWINDCSS) -i web/styles/input.css -o web/assets/css/output.css
 {% endif %}
 {% endif %}
 
 .PHONY: test
-test:{% if templ %} generate{% endif %}{% if gotestsum %} install-gotestsum{% endif %} ## Test the application
+test:{% if generate %} generate{% endif %}{% if gotestsum %} install-gotestsum{% endif %} ## Test the application
 	{{ go_test }} ./...
 {% if gotestsum %}
 
 .PHONY: test-watch
-test-watch:{% if templ %} generate{% endif %} install-gotestsum ## Rerun the tests of changed packages
+test-watch:{% if generate %} generate{% endif %} install-gotestsum ## Rerun the tests of changed packages
 	$(GOTESTSUM) --watch
 {% endif %}
 {% if external_db %}
@@ -115,7 +117,7 @@ migrate-new: install-goose ## Create a migration, e.g. make migrate-new name=add
 {% endif %}
 
 .PHONY: lint
-lint:{% if templ %} generate{% endif %} install-golangci-lint ## Lint the application
+lint:{% if generate %} generate{% endif %} install-golangci-lint ## Lint the application
 	$(GOLANGCI_LINT) run
 
 .PHONY: fmt
@@ -123,7 +125,7 @@ fmt: install-golangci-lint ## Format the code with the formatters in .golangci.y
 	$(GOLANGCI_LINT) fmt
 
 .PHONY: vuln
-vuln:{% if templ %} generate{% endif %} install-govulncheck ## Check for known vulnerabilities
+vuln:{% if generate %} generate{% endif %} install-govulncheck ## Check for known vulnerabilities
 	$(GOVULNCHECK) ./...
 
 .PHONY: clean

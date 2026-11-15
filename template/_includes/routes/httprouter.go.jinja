@@ -5,11 +5,8 @@ import (
 	"log"
 	"net/http"
 
-{% if templ %}
-	"github.com/a-h/templ"
-{% endif %}
 	"github.com/julienschmidt/httprouter"
-{% if templ %}
+{% if web %}
 
 	"{{ module_path }}/web"
 {% endif %}
@@ -25,10 +22,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 {% if websocket %}
 	r.HandlerFunc(http.MethodGet, "/websocket", s.websocketHandler)
 {% endif %}
-{% if templ %}
+{% if web %}
 
+{% if web_assets %}
 	r.Handler(http.MethodGet, "/assets/*filepath", http.FileServer(http.FS(web.Files)))
-	r.Handler(http.MethodGet, "/web", templ.Handler(web.HelloForm()))
+{% endif %}
+	r.HandlerFunc(http.MethodGet, "/web", web.HelloFormHandler)
 	r.HandlerFunc(http.MethodPost, "/hello", web.HelloWebHandler)
 {% endif %}
 
