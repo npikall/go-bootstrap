@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="go-bootstrap logo: a rocket with a browser-window porthole" width="160">
+</p>
+
 # go-bootstrap
 
 Scaffold new Go web projects from a Jinja template, rendered with
