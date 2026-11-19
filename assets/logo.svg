@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" width="560" height="560" role="img" aria-label="go-bootstrap logo: a rocket with a browser-window porthole">
+  <!-- palette: ink #1E2A3A · white #FFFFFF · go-cyan #00ADD8 · sun #FFC94D -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- speed lines -->
+    <g fill="none" stroke="#1E2A3A" stroke-width="14">
+      <path d="M140 170 Q138 200 140 230"/>
+      <path d="M112 250 Q110 268 112 286"/>
+      <path d="M420 160 Q422 200 420 240"/>
+      <path d="M448 262 Q450 280 448 298"/>
+    </g>
+
+    <!-- flame (behind body) -->
+    <path d="M246 380 Q236 432 280 482 Q324 432 314 380 Z" fill="#FFC94D" stroke="#1E2A3A" stroke-width="14"/>
+
+    <!-- fins (behind body) -->
+    <path d="M214 296 Q168 318 158 378 Q160 402 182 398 L214 386 Z" fill="#00ADD8" stroke="#1E2A3A" stroke-width="14"/>
+    <path d="M346 296 Q392 318 402 378 Q400 402 378 398 L346 386 Z" fill="#00ADD8" stroke="#1E2A3A" stroke-width="14"/>
+
+    <!-- body: white knockout, then body -->
+    <path d="M280 66 Q340 118 350 220 L352 362 Q352 394 320 396 L240 396 Q208 394 208 362 L210 220 Q220 118 280 66 Z"
+          fill="none" stroke="#FFFFFF" stroke-width="36"/>
+    <path d="M280 66 Q340 118 350 220 L352 362 Q352 394 320 396 L240 396 Q208 394 208 362 L210 220 Q220 118 280 66 Z"
+          fill="#FFFFFF" stroke="#1E2A3A" stroke-width="14"/>
+
+    <!-- nose cone -->
+    <path d="M280 66 Q314 96 332 140 Q280 150 228 140 Q246 96 280 66 Z" fill="#00ADD8" stroke="#1E2A3A" stroke-width="14"/>
+
+    <!-- browser-window porthole -->
+    <path d="M254 190 Q280 186 306 190 Q324 192 324 210 L324 264 Q324 282 306 282 L254 282 Q236 282 236 264 L236 210 Q236 192 254 190 Z"
+          fill="#FFFFFF" stroke="#1E2A3A" stroke-width="14"/>
+    <path d="M254 190 Q280 186 306 190 Q324 192 324 210 L324 218 Q280 222 236 218 L236 210 Q236 192 254 190 Z"
+          fill="#FFC94D" stroke="#1E2A3A" stroke-width="14"/>
+    <path d="M258 238 L278 252 L258 266" fill="none" stroke="#1E2A3A" stroke-width="12"/>
+    <path d="M290 266 L306 266" fill="none" stroke="#00ADD8" stroke-width="12"/>
+
+    <!-- smoke puffs -->
+    <circle cx="214" cy="468" r="24" fill="#FFFFFF" stroke="#1E2A3A" stroke-width="12"/>
+    <circle cx="348" cy="470" r="20" fill="#FFFFFF" stroke="#1E2A3A" stroke-width="12"/>
+    <circle cx="170" cy="488" r="12" fill="#FFFFFF" stroke="#1E2A3A" stroke-width="12"/>
+    <circle cx="390" cy="490" r="10" fill="#FFFFFF" stroke="#1E2A3A" stroke-width="12"/>
+  </g>
+</svg>
